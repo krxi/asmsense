@@ -19,6 +19,15 @@ def test_literatur_guncel_main_ve_v6_onceligi():
     assert "--surum v6" in md and "VERI_SURUM" in md
 
 
+def test_birlesen_araclar_acik_veya_taslak_gosterilmez():
+    md = BELGE.read_text(encoding="utf-8")
+
+    assert "[#9](https://github.com/krxi/asmsense/pull/9) ana dala birleştirildi" in md
+    assert "#6 iki kanıt hash'i\nsağlanana kadar fail-closed" in md
+    assert "Açık [#4]" not in md
+    assert "#6 taslaktır" not in md
+
+
 def test_testin_gelistirme_kullanimi_gizlenmez():
     md = BELGE.read_text(encoding="utf-8")
     assert "geliştirmede kullanılmış\nölçüt" in md

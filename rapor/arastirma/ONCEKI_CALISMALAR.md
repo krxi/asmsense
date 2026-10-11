@@ -20,18 +20,18 @@ bileşenlerdir. Kanıt, her satırdaki sabit kod bağlantısıdır.
 | İkili/assembly kimlik eşlemesi | [`dogrula_v6.py`](https://github.com/krxi/asmsense/blob/15e3b28f1be387d0e8655edd838e1c32f9d348d5/dogrula_v6.py): hazır kimlikler ve proje bazlı kapsam raporu mevcut. Başarı çıkış kodu, bütün hedeflerin eşleştiğini tek başına kanıtlamaz; eşleşen ID listesi ve sayaçlar incelenmeli. |
 | Derleme/ölçekleme orkestrasyonu | [`olcekle.py`](https://github.com/krxi/asmsense/blob/15e3b28f1be387d0e8655edd838e1c32f9d348d5/olcekle.py), [v4 protokolü](https://github.com/krxi/asmsense/blob/15e3b28f1be387d0e8655edd838e1c32f9d348d5/VERI_HATTI_V4.md): mevcut proje/bölme ve lisans sınırları korunmalı; araştırma için benchmark yeniden üretilmemeli. |
 
-**Kalan boşluklar:** mevcut ana-hat çıktılarının beklenen hash ve eşleme
-kanıtlarıyla sabitlenmesi; eşit bütçeli küçük-model assembly/combined
-validation karşılaştırması; açıklama değerlendirmesinin insanlarla
-kalibrasyonu; Ghidra'nın model servisi ve GUI ile uçtan uca doğrulanması.
-Açık [#4](https://github.com/krxi/asmsense/pull/4),
+**Kalan boşluklar:** v6 pilotunun iki ikili kanıt hash'inin sabitlenmesi;
+eşit bütçeli küçük-model assembly/combined validation karşılaştırmasının
+çalıştırılması; açıklama değerlendirmesinin insanlarla kalibrasyonu;
+Ghidra'nın model servisi ve GUI ile uçtan uca doğrulanması. Araç PR'ları
+[#4](https://github.com/krxi/asmsense/pull/4),
 [#5](https://github.com/krxi/asmsense/pull/5),
 [#6](https://github.com/krxi/asmsense/pull/6),
 [#7](https://github.com/krxi/asmsense/pull/7),
 [#8](https://github.com/krxi/asmsense/pull/8) ve
-[#9](https://github.com/krxi/asmsense/pull/9) bu boşlukların bir kısmına araç
-sağlar; açık PR, main'de birleşmiş veya gerçek GPU'da ölçülmüş sonuç değildir.
-#6 taslaktır; hazır olmayan kanıtlar **not run / unverified** kalır.
+[#9](https://github.com/krxi/asmsense/pull/9) ana dala birleştirildi. Birleşmiş
+araç, çalıştırılmış deney veya ölçülmüş kazanç değildir: #6 iki kanıt hash'i
+sağlanana kadar fail-closed kalır; GPU eğitimi ve kalite ölçümü **not run**.
 
 ### Test2000: geliştirmede kullanılmış ölçüt
 
@@ -108,8 +108,9 @@ kazancı henüz gösterilmedi; aşağıdaki beş aday bir doğrulama ailesi say�
 Bütçe kaydı gerçek eğitim tokenı/adımı, saniye/adım, tepe bellek, çıkarım
 sayısı ve decompile CPU süresidir. Ölçüm olmadan GPU-saat veya para tasarrufu
 verilmez. Ana Molab yolu final test çalıştırdığından, sırf validation taraması
-için kontrolsüz tam koşular başlatılmaz. #6 mevcut hazırlanmış ana-hat
-çıktılarını kullanarak bu ayrımı dener; taslak ve GPU **not run** durumundadır.
+için kontrolsüz tam koşular başlatılmaz. Ana dala birleşen #6, mevcut
+hazırlanmış ana-hat çıktılarını kullanarak bu ayrımı fail-closed biçimde dener;
+pilot yürütmesi ve GPU eğitimi **not run** durumundadır.
 
 ## Küme bootstrap ve beş aday için kabul kuralı — önerilen protokol
 
