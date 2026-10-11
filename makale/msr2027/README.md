@@ -8,14 +8,15 @@ verinin DOI'si gerekir.
 tectonic main.tex          # veya: pdflatex main && bibtex main && pdflatex main && pdflatex main
 ```
 
-Bugünkü taslak 3 sayfa (kaynaklar dahil); bir şekil veya v6 satırı için yer var.
+Taslak v6 satırını, karışık sonucu ve güncel veri-audit sınırlarını içeriyor. Sayfa sayısı gönderimden
+önce aşağıdaki derleme komutuyla yeniden doğrulanmalı.
 
 ## Göndermeden önce
 
 - [ ] Yazar soyadı (`main.tex` başı; kurum "Independent researcher, Türkiye" yazıldı, e-posta gönderim sisteminde)
 - [ ] Zenodo DOI: gönderimde gerekmez, kamera-hazırda (24 Ocak) gerekir. `asmsense-data` için entegrasyonu aç, yeni release yayımla
 - [x] `refs.bib`: 7 kaynak doğrulandı; BLens ve SymGen sayfa/DOI ile resmî konferans sayfalarından (#15), diğerleri arXiv/ACL/Zenodo'dan (XFL/NERO sayfa ve DOI'si çelişkili kaynaklar yüzünden yok)
-- [ ] v6 sonucu geldiyse Tablo III'e satır ekle (`olcum_v6.py rapor`)
+- [x] v6 sonucu ve karşılaştırma sınırları Tablo III'e/metne işlendi (`olcum-v6.json`, main `219b8bc`)
 - [ ] Metni kendi sesinle revize et; sayıları değiştirme, kaynakları aşağıda
 - [ ] İsteğe bağlı şekil: `grafik/x-ezber.png` (ezber karşılaştırması) veya `grafik/test-hata.png`
 
@@ -27,5 +28,5 @@ Bugünkü taslak 3 sayfa (kaynaklar dahil); bir şekil veya v6 satırı için ye
 | Ezber tablosu | README bölüm 2 |
 | test2000 taban çizgileri ve snkv dışı sütun | `sonuc/test2000-*.jsonl`, `rapor/arastirma/V6_VERI_DENETIMI.md` |
 | v5 − v1 aralığı (+0,010 … +0,031) | proje-kümeli bootstrap, `aciklama_degerlendir.bootstrap_farki`, 4.000 çekim, tohum 42 |
-| Açıklama kalitesi | README bölüm 6 (`aciklama_puan_v5.py`) |
+| v6 − v5 adı, checkpoint/protokol ve açıklama kalitesi | README bölüm 6; [tam duyarlıklı ad raporu](https://huggingface.co/krxi123/asmsense-lora-v6/blob/main/olcum-v6.json); [eşlenmiş açıklama denetimi](https://huggingface.co/krxi123/asmsense-lora-v6/blob/main/aciklama-v6.json) |
 | Decompile kazancı | README bölüm 7 |
