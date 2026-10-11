@@ -6,7 +6,7 @@
 
 ## Current status
 
-The v4 dataset contains 228,177 functions from 341 projects across 5 optimization levels and is published on [Hugging Face](https://huggingface.co/datasets/krxi123/asmsense) under the `v4` config. The Ghidra script is ready. The best small model so far, Qwen3-8B + LoRA trained on the v5 data (description first, then name), reaches name F1 0.124 on the fixed v4 test sample and 0.155 on `eval_115`; the best large model with call context scores 0.167 on the same test sample. See Results, section 6. The model writes an English and a Turkish one-sentence description along with the name. The adapter is on Hugging Face: [krxi123/asmsense-qwen3-8b-lora](https://huggingface.co/krxi123/asmsense-qwen3-8b-lora).
+The v4 dataset contains 228,177 functions from 341 projects across 5 optimization levels and is published on [Hugging Face](https://huggingface.co/datasets/krxi123/asmsense) under the `v4` config. Qwen3-8B + LoRA v6 adds anonymized Ghidra pseudocode to assembly and call context: name F1 is 0.135 on the fixed 2,000-row test sample versus 0.124 for v5, but 0.135 on `eval_115` versus 0.155 for v5. The improvement does not carry across both checks; both planned F1 targets (0.14 / 0.17) were missed. The source-aware English explanation audit is 62/294 correct (21.1%), with six judge failures; the 25% target was also missed. The model generates English/Turkish descriptions and a name; these suggestions still need review. See Results, sections 6–7. The [v6 Apache-2.0 adapter and full-precision evidence](https://huggingface.co/krxi123/asmsense-lora-v6) are public; the [historical v5 adapter](https://huggingface.co/krxi123/asmsense-qwen3-8b-lora) remains available separately.
 
 Open a stripped program in Ghidra or IDA and you will see hundreds of functions named `FUN_00401a30`. Much of reverse engineering consists of understanding and naming these functions one by one. This project aims to teach a model that first step:
 
@@ -43,7 +43,7 @@ Three tiers are evaluated on the same test set:
    - external library calls (`memcpy`, `__stack_chk_fail`) and string literals (`; -> "out of memory"`) remain visible because they are also visible in a real binary.
    
    If the function's real name appears in its own assembly—for example, in an error message—the row is marked `sizinti` and excluded from the test set.
-3. **Evaluation (`taban.py`):** The model receives only the assembly and is asked to predict a name. Predictions are scored by token overlap (F1), so close answers such as `crc32_update` and `update_crc` receive partial credit.
+3. **Initial assembly-only baseline (`taban.py`):** The model receives assembly and predicts a name. Later evaluations add call context; v6 additionally uses prepared, anonymized Ghidra pseudocode with the original assembly/context. Predictions are scored by token overlap (F1), so close answers such as `crc32_update` and `update_crc` receive partial credit.
 
 ```
 loc_6:
@@ -60,13 +60,13 @@ jne     loc_6
 | | Projects | Functions (-O0 + -O2) |
 |---|---|---|
 | Training | zlib, libpng, sqlite, lua, mbedtls, zstd, libsodium, expat, brotli, jansson, lz4, libyaml, xxhash, cJSON | 16,804 |
-| Test (memorization-resistant) | tomlc17, cyaml, mu_json_x, sajs, picomatch | 777 → evaluation set 115 |
+| Test (memorization-resistant) | tomlc17, cyaml, mu_json_x, sajs, picomatch | 777 → evaluation set: 115 compiled rows, 95 unique source functions |
 
 The dataset is available on Hugging Face: [krxi123/asmsense](https://huggingface.co/datasets/krxi123/asmsense) (16,804 training examples, 777 test examples, the `eval_115` evaluation set, and license texts). It is also mirrored on Kaggle: [krxiii/asmsense](https://www.kaggle.com/datasets/krxiii/asmsense).
 
 ### Scaled dataset (v4 pipeline, 5 optimization levels)
 
-Permissively licensed (MIT, BSD, Apache-2.0, ISC, zlib) C projects selected from GitHub with `olcekle.py` were compiled at `-O0/-O1/-O2/-O3/-Os` using `cikar_bin.py` (real dylib + `strip -x`). Project build scripts were not run; files were compiled individually with clang, and files or projects that failed to compile were skipped. Rows were deduplicated by normalized assembly hash. Rows with assembly identical to validation/test data were removed from training, while vendored copies whose (file, name) pairs appeared in training were removed from validation/test. Every row has a `lisans` field.
+Permissively licensed (MIT, BSD, Apache-2.0, ISC, zlib) C projects selected from GitHub with `olcekle.py` were compiled at `-O0/-O1/-O2/-O3/-Os` using `cikar_bin.py` (real dylib + `strip -x`). Project build scripts were not run; files were compiled individually with clang, and files or projects that failed to compile were skipped. Rows were deduplicated by normalized assembly hash. Rows with assembly identical to validation/test data were removed from training; validation/test rows with matching (file, name) pairs in training were also removed. This does not remove every renamed or relocated vendored copy. Every row has a `lisans` field.
 
 | Split | Projects | Rows | Unique source functions |
 |---|---:|---:|---:|
@@ -76,9 +76,9 @@ Permissively licensed (MIT, BSD, Apache-2.0, ISC, zlib) C projects selected from
 
 Of 473 projects, 352 produced rows and 120 failed to compile (kernel, embedded, or platform-dependent code). Only clang was used. The data is kept outside Git and can be regenerated with `python3 aday_bul.py` and `python3 olcekle.py hepsi`.
 
-The training/test split is strictly **project-level**: no function from a project can appear on both sides. Test projects were deliberately chosen to be little-known (2-190 stars), and most were started in 2024-2025, making it far less likely that large models encountered them during training than a library such as zlib. Licenses: [veri/LISANSLAR.md](veri/LISANSLAR.md).
+The training/test split uses disjoint **root-project identifiers**: rows from one root project do not appear on both sides, but vendored source families can cross that boundary. Test projects were deliberately chosen to be little-known (2-190 stars), and most were started in 2024-2025; this reduces obvious pretraining-overlap risk compared with zlib but does not prove its absence. Licenses: [veri/LISANSLAR.md](veri/LISANSLAR.md).
 
-**Known exception: vendored code.** An independent audit of the released v6 data ([rapor/arastirma/V6_VERI_DENETIMI.md](rapor/arastirma/V6_VERI_DENETIMI.md), `veri_denetim_v6.py`) confirmed that no project, id or (project, file, name) appears on both sides, but test project `snkv` embeds SQLite under its own file names while `sqlite` is a training project. In the fixed 2,000-row test sample, 217 rows (10.85%) have a name identical to a SQLite training function. Every model scores *lower* on those rows, so they do not inflate the results; they narrow the small-vs-large gap instead (see Results, section 6). The validation sample `valid_300` contains 16 similar rows (5.3%).
+**Known exception: vendored code.** An independent audit of the released v6 data ([rapor/arastirma/V6_VERI_DENETIMI.md](rapor/arastirma/V6_VERI_DENETIMI.md), `veri_denetim_v6.py`) confirmed no shared root-project identifier, id or (project, file, name) key, but test project `snkv` embeds SQLite under its own file names while `sqlite` is a training project. The fixed 2,000-row test sample has 217 rows (10.85%) with names identical to SQLite training functions; `valid_300` has 16 such rows (5.3%). These are name-overlap candidates, not verified identical-source counts. Historical score slices (section 6) do not establish that overlap has no effect on results; the detailed content census and its limitations are reported separately below.
 
 ## Results
 
@@ -150,34 +150,48 @@ Qwen2.5-Coder-0.5B (4-bit), 1,500 steps (~1 hour 40 minutes, 4,8 GB memory). Nei
 | LoRA v1 | 14,710 functions, original names | 0.01 | 0 / 112 | memorized project prefixes: 54 of 112 predictions were `mbedtls_…` |
 | LoRA v2 | 10,360 functions, prefixes removed, ≤1,500 per project | 0.02 | 0 / 112 | mode collapse: 56 of 112 predictions were one of two names |
 
-The 0.5B model and half an epoch appear insufficient for this task. Next experiments: a larger base model (1.5B-3B), longer training, and call context in the input.
+The 0.5B model and half an epoch appeared insufficient for this task. Subsequent larger-model, call-context and pseudocode experiments are reported in sections 6–7.
 
 ### 6. Larger small models: 1.5B and 8B LoRA
 
-Same fixed v4 test sample (`lora/test_sabit_idler.txt`, little-known test projects) and the `eval_115` set. Name F1 compares with the real name; prefix-stripped F1 removes the project prefix from both sides. Details: [rapor/MOLAB_IKI_F1.md](rapor/MOLAB_IKI_F1.md), [sonuc/SABIT500_LORA15_V3.md](sonuc/SABIT500_LORA15_V3.md).
+Same fixed v4 test sample (`lora/test_sabit_idler.txt`, little-known test projects) and the `eval_115` set. Name F1 compares with the real name; prefix-stripped F1 removes the project prefix from both sides. F1 is the mean per-function name-token F1, not a description-quality score or the percentage of correct names. Details: [rapor/MOLAB_IKI_F1.md](rapor/MOLAB_IKI_F1.md), [sonuc/SABIT500_LORA15_V3.md](sonuc/SABIT500_LORA15_V3.md).
 
-| Model | Test set | n | Name F1 (-O0 / -O2 / all) | Prefix-stripped F1 (all) | Exact matches (real / prefix-stripped) |
+| Model | Test set | n | Name F1 (-O0 / -O2 / all) | Prefix-stripped F1 (all) | F1=1 matches (name / prefix-stripped) |
 |---|---|---:|---|---:|---|
 | mimo-v2.6-pro, with call context (large, reference) | v4 test, fixed sample | 2,000 | 0.178 / 0.154 / 0.167 | 0.170 | 40 / 45 |
 | deepseek-v4.1-flash, with call context (large, reference) | v4 test, fixed sample | 2,000 | 0.161 / 0.130 / 0.154 | 0.156 | 40 / 45 |
-| **Qwen3-8B + LoRA v5** (description → name, 95k rows, 1 epoch) | v4 test, fixed sample | 2,000 | 0.127 / 0.098 / **0.124** | 0.126 | 26 / 31 |
-| **Qwen3-8B + LoRA v5** | `eval_115` | 115 | 0.188 / 0.120 / **0.155** | 0.173 | 1 / 2 |
+| **Qwen3-8B + LoRA v6** (assembly + context + Ghidra pseudocode) | v4 test, fixed sample | 2000 | 0.140 / 0.112 / **0.135** | 0.137 | 31 / 37 |
+| **Qwen3-8B + LoRA v6** | `eval_115` | 115 | 0.175 / 0.092 / **0.135** | 0.153 | 2 / 3 |
+| Qwen3-8B + LoRA v5 (description → name, 95k rows, 1 epoch) | v4 test, fixed sample | 2,000 | 0.127 / 0.098 / 0.124 | 0.126 | 26 / 31 |
+| Qwen3-8B + LoRA v5 | `eval_115` | 115 | 0.188 / 0.120 / 0.155 | 0.173 | 1 / 2 |
 | Qwen3-8B + LoRA v1 (name only, 41k rows × 2 epochs) | v4 test, fixed sample | 2,000 | 0.108 / 0.093 / 0.106 | 0.108 | 25 / 33 |
 | Qwen3-8B + LoRA v1 | `eval_115` | 115 | 0.102 / 0.085 / 0.094 | 0.111 | 1 / 4 |
 | Qwen2.5-Coder-1.5B + LoRA v3, with call context (MLX, laptop) | first 500 of the fixed sample | 500 | 0.044 | 0.045 | 0 |
 | Qwen2.5-Coder-1.5B + LoRA v3, assembly only | first 500 of the fixed sample | 500 | 0.037 | 0.038 | 0 |
 
-**Outside the vendored project.** Without `snkv` (1,491 of the 2,000 rows), name F1 is 0.132 for v5 and 0.190 for mimo-v2.6-pro with call context; the paired gap widens from −0.044 [−0.076, −0.021] to −0.058 [−0.082, −0.033] (project-cluster bootstrap, 2,000 draws). The headline figures above keep all 2,000 rows so they stay comparable with earlier runs.
+The historical table's “exact matches” counts use name-token F1=1, which can include differently ordered/cased identifiers with the same token set; this is not necessarily byte-for-byte name equality. The v6 literal string-exact counts are 21 on the fixed test and 1 on `eval_115`, reported separately from F1=1 matches.
 
-On the same 500 rows the 8B model scores 0.108 versus 0.044 for 1.5B. The 1.5B adapter does not generalize to new projects and shows strong mode collapse (the most frequent prediction covers 13.6% of rows). The 8B model is the first small model that is clearly above zero.
+**Outside the vendored project (historical v5 comparison, not a v6 result).** Without `snkv` (1,491 of the 2,000 rows), name F1 is 0.132 for v5 and 0.190 for mimo-v2.6-pro with call context; the paired v5 − mimo gap widens from −0.044 [−0.076, −0.021] to −0.058 [−0.082, −0.033] (project-cluster bootstrap, 2,000 draws). The headline figures keep all 2,000 rows so they remain comparable with earlier runs.
 
-**v5 versus v1 (same base model, same 2,000 test rows).** v5 changes the data and the target: every source function appears at least once (95,000 rows, 72,061 functions), the project-prefix rule is fixed, and the model first writes a one-sentence English description, then the name, then a Turkish description. Name F1 rises from 0.106 to 0.124 (paired difference +0.018, 95% bootstrap interval +0.009 to +0.026) and from 0.094 to 0.155 on `eval_115`. Predictions that are verbatim copies of a training name drop from 42% to 30%. Functions without string constants remain the hard case (0.093, up from 0.079; with strings 0.299). The model is still 0.044 below mimo-v2.6-pro with call context on the same rows (interval -0.053 to -0.034). The checkpoint was chosen on 300 validation rows (step 4,500 of 5,938; validation name F1 0.263) and the test sets were scored once.
+On the same 500 rows the 8B v1 model scores 0.108 versus 0.044 for 1.5B. The 1.5B adapter does not generalize to new projects and shows strong mode collapse (the most frequent prediction covers 13.6% of rows). The 8B model was the first small model clearly above zero.
 
-**Description quality is the bottleneck.** A judge model (mimo-v2.6-pro) compared the model's descriptions with the C source on 300 test rows (`aciklama_puan_v5.py`): the English description is correct for 20.0%, partly correct for 15.3% and wrong for 64.7% (Turkish: 20.9% / 18.9% / 60.1%). When the description is correct the name F1 is 0.306; when it is wrong, 0.054. The model usually names a function consistently with what it believes the function does; the open problem is understanding the function from assembly.
+**v5 versus v1 (historical comparison, same base model and 2,000 test rows).** v5 changed the data and the target: every source function appeared at least once (95,000 rows, 72,061 functions), the project-prefix rule was fixed, and the model first wrote a one-sentence English description, then the name, then a Turkish description. Name F1 rose from 0.106 to 0.124 (paired difference +0.018, 95% bootstrap interval +0.009 to +0.026) and from 0.094 to 0.155 on `eval_115`. Predictions that were verbatim copies of a training name dropped from 42% to 30%. Functions without string constants remained the hard case (0.093, up from 0.079; with strings 0.299). The v5 checkpoint was selected on 300 validation rows (step 4,500 of 5,938; validation name F1 0.263).
 
-Breakdown: [rapor/MOLAB_V5_KIRILIM.md](rapor/MOLAB_V5_KIRILIM.md); teacher-label audit: [rapor/OGRETMEN_DENETIM.md](rapor/OGRETMEN_DENETIM.md).
+**v6 versus v5.** v6 keeps the same 95,000 training row IDs and targets, but adds anonymized Ghidra pseudocode to the assembly and call context. The selected v6 checkpoint is step 4500 of 5938; selection protocol: maximum valid_300 name-token F1 across 12 scheduled checkpoints; selected step 4,500 (0.2680531506); ties retain the earlier checkpoint. Test results were generated only after training ended, not used for checkpoint selection. On ID-aligned predictions, the mean name-F1 difference (v6 − v5) is +0.011 on 2000 fixed-test rows (95% interval +0.002 to +0.018), and -0.020 on 115 `eval_115` rows (95% interval -0.057 to +0.020). Interval method and sampling unit: ID-aligned paired project-cluster percentile bootstrap, 2,000 draws, seed 42; resample 26 root-project clusters for the fixed test and five for eval_115 with replacement, keeping all aligned source/optimization rows per sampled project; each draw uses the pooled row-weighted mean v6 − v5 difference, not the mean of project means. Evidence and interpretation: The fixed-test estimate improves by 0.0111 F1 and its project-cluster interval excludes zero, but eval_115 drops by 0.0201 and its interval spans zero. Neither planned name-F1 target (0.14 / 0.17) was reached. This is not a compute-matched ablation, and the overlapping small benchmark does not independently confirm a gain.
 
-### 7. Does decompiled code help? (large model, pre-experiment)
+**Comparison caveats.** The v5 rows above are published historical scores, rounded to three decimals; paired differences must come from full-precision, ID-aligned predictions, not subtraction of these displayed values. The v6 input and system prompt differ, and the average training conversation is longer (1,443 versus 1,037 tokens, about 1.39×), so this is not a fixed-token-compute comparison. Checkpoint selection and repeated use of the fixed test set can introduce selection bias; the selection protocol above must disclose any test-guided decisions. `eval_115` is a small five-project check, not a broad deployment benchmark, and it must not be treated as an independent replication without checking overlap with the fixed test sample. An interval spanning zero is not evidence of a reliable improvement. Full evaluation protocol (decoding, row coverage, revisions and exclusions): Selected only by the maximum greedy name F1 on valid_300 (300 rows), ties retain the earlier step; no test-guided checkpoint selection or post-result retraining. Final selected-adapter predictions use do_sample=False, enable_thinking=False and max_new_tokens=160. Fixed test: 2,000/2,000 unique aligned IDs; eval_115: 115/115. All generated JSON parsed successfully in both sets; no rows excluded. Both completion stamps match the same run and selected checkpoint. Paired v5 scores are recomputed from ID-aligned full-precision saved predictions.
+
+**Input audit.** A full-input whole-token scan found target text in 5,803/95,000 training rows (6.11%); this is a lexical-match rate, including coincidences, not a proven disclosure rate. Assertion/logger string disclosures do remain. The fixed test's 2/2,000 matches are `add` mnemonic coincidences, and `eval_115` has zero matches; these checks do not certify all forms of leakage absent. Nine training rows counted as pseudocode-present contain only Ghidra warnings and the truncation marker. Source-function keys overlap between the benchmarks: 36 of `eval_115`'s 95 unique functions are in the fixed sample, so it is not independent replication. Project-disjoint roots do not rule out vendored-family overlap.
+
+The six-file content census found no exact full-input match between training and another split; conservative anonymous-symbol/whitespace normalization finds one with the full test and none with the fixed sample. Normalized pseudocode matches cover 47 fixed-test rows, including generic stubs/wrappers, and are not a same-source or contamination rate. Existing source-extraction sidecars contain 45 exact-text groups linking 54 fixed-test rows (45 unique source-function keys) to training. The sidecar-to-v6-binary/source-revision mapping was not revalidated; model-score effects were not measured.
+
+The separate [tracked audit](rapor/arastirma/V6_VERI_DENETIMI.md) reports 51 normalized-pseudocode matches under a different normalization; its count is not interchangeable with the 47-row conservative census above.
+
+**Description quality.** The v5 source-aware judge audit sampled 300 test rows: among successful decisions, English descriptions were correct / partly correct / wrong in 20.0% / 15.3% / 64.7% (295 decisions, 5 judge failures; 59 correct). Turkish percentages were 20.9% / 18.9% / 60.1% (296 decisions, 4 failures; 62 correct). For v6, mimo-v2.6-pro (temperature 0, thinking disabled; source-aware 0/1/2 judgments) assessed 300 rows from the same 300 fixed-test IDs previously judged for v5, with 300 English and 300 Turkish judgments against C source: English 21.1% / 21.4% / 57.5%; Turkish 20.5% / 24.7% / 54.8%. Audit denominators, failed/missing outputs and comparability: Table percentages use successful decisions: English 62/294 correct (21.1%), 6 unresolved judge failures; Turkish 60/292 correct (20.5%), 8 failures. Failed judgments remain null, are not called wrong, and no sampled ID is removed. On the full 300-ID denominator, English correct is 62/300=20.67% versus v5 59/300=19.67%; paired difference +1.00 percentage point, project-cluster 95% interval −0.91 to +4.03 points (25 projects, 2,000 draws, seed 42). Turkish is 60/300=20.00% versus v5 62/300=20.67%, difference −0.67 points (interval −5.06 to +3.20). Both explanation intervals span zero. The planned 25% English target was missed even if all six unresolved judgments had been correct (68/300=22.67%); the audit is automated, not human-certified. The judge sees C source (first 12,000 characters) and the same teacher reference/prompt as v5, not only the v6 binary input. Judge ratings are not human-certified correctness, and F1 alone does not establish semantic understanding.
+
+Historical breakdown: [rapor/MOLAB_V5_KIRILIM.md](rapor/MOLAB_V5_KIRILIM.md); teacher-label audit: [rapor/OGRETMEN_DENETIM.md](rapor/OGRETMEN_DENETIM.md). v6 evidence: [full-precision v6 report](https://huggingface.co/krxi123/asmsense-lora-v6/blob/main/olcum-v6.json) and [matched explanation audit](https://huggingface.co/krxi123/asmsense-lora-v6/blob/main/aciklama-v6.json).
+
+### 7. Does decompiled code help? (large-model pre-experiment and v6 LoRA)
 
 Before converting the training data, the 2,000 fixed test functions were decompiled with Ghidra 12 (`decompile_ghidra.py`; project-internal names anonymized, 0 rows with the target name left in the text) and given to mimo-v2.6-pro:
 
@@ -187,7 +201,31 @@ Before converting the training data, the 2,000 fixed test functions were decompi
 | decompiled code only (no context) | 0.173 | +0.006 (-0.002 to +0.014) | 36 |
 | assembly + call context + decompiled code | **0.192** | **+0.025 (+0.018 to +0.032)** | 52 |
 
-Decompiled code alone matches assembly plus context with about half the input tokens (median 202 tokens per function); adding it to the assembly gives a clear gain. Next step: add decompiled code to the training input (v6).
+This historical large-model experiment motivated v6. It does not by itself establish that an 8B LoRA benefits, and its scores are not v6 results. Section 6 reports the v6-versus-v5 comparison. The fixed-test optimization breakdown below checks whether the aggregate hides differences between compiler settings; these are descriptive slices, not five independently confirmed effects.
+
+| Optimization | Paired rows | v5 name F1 (aligned predictions) | v6 name F1 |
+|---|---:|---:|---:|
+| `-O0` | 729 | 0.127 | 0.140 |
+| `-O1` | 470 | 0.133 | 0.150 |
+| `-O2` | 210 | 0.098 | 0.112 |
+| `-O3` | 91 | 0.114 | 0.109 |
+| `-Os` | 500 | 0.123 | 0.127 |
+
+The `-O3` point estimate declines, so there is no improvement at every optimization level. Both planned name-F1 targets (0.14 on the fixed test and 0.17 on `eval_115`) were missed.
+
+| Pseudocode slice | Fixed-test rows | v5 → v6 name F1 | `eval_115` rows | v5 → v6 name F1 |
+|---|---:|---|---:|---|
+| complete | 1,652 | 0.125 → 0.139 | 100 | 0.140 → 0.135 |
+| tail-truncated | 347 | 0.117 → 0.114 | 15 | 0.260 → 0.140 |
+| missing | 1 | 0.500 → 0.500 | 0 | not applicable |
+
+These are diagnostic observational slices, not a randomized estimate of the causal effect of truncation. The aggregate gain does not carry over to the truncated fixed-test subgroup or the small `eval_115` benchmark.
+
+**Coverage and truncation.** Ghidra pseudocode is present in 94,738/95,000 training rows (99.7%). It is tail-truncated in **12,818/95,000 training rows (13.5%)** to fit a 3,072-token full conversation; the original assembly/context is retained. On the fixed 2,000-row test sample, 1,999 rows include pseudocode and 347 (17.35%) are truncated; `eval_115` has pseudocode in 115/115 rows and truncation in 15 (13.04%). Missing or rejected pseudocode leaves the row in place with its assembly/context input; these numbers are input coverage, not reduced test denominators. In training, 80 pseudocode blocks were excluded after a target-name leak check. Name anonymization reduces obvious leaks but is not a proof against every semantic or pretraining overlap.
+
+Ghidra output is approximate pseudocode, not recovered source: types, control flow and external-call interpretation can be wrong. Results concern filtered open-source x86-64 C functions; they do not establish accuracy on obfuscated, packed, proprietary or other-architecture binaries. Suggested names and descriptions need a reverse engineer's review before application.
+
+**Licensing.** Pipeline code is MIT. Assembly and Ghidra-derived pseudocode remain derived from the source projects and retain the corresponding permissive project licenses and notices; running Ghidra does not relicense the corpus as a single MIT or Apache-2.0 work. Follow [veri/LISANSLAR.md](veri/LISANSLAR.md), the `lisans` metadata and the source-license inventory when redistributing data. The model adapter's declared license is separate from the data provenance.
 
 ### Note: the zlib warm-up and pipeline leakage
 
@@ -196,7 +234,7 @@ The first zlib evaluation (v1, 60 functions) used a simpler data pipeline that i
 ## Roadmap
 
 **1. Foundation** ✅
-- [x] Data generation pipeline (-O0/-O2, leak-free v3)
+- [x] Data generation pipeline (-O0/-O2, v3 pipeline leakage fixes)
 - [x] Baseline evaluation with large models, memorization-resistant test set, and error analysis
 - [x] 16,804 functions from 14 projects; publicly released ([Hugging Face](https://huggingface.co/datasets/krxi123/asmsense), EVREN)
 
@@ -204,12 +242,14 @@ The first zlib evaluation (v1, 60 functions) used a simpler data pipeline that i
 - [x] Call context (callees' imports and strings): substantially improved F1 for large models
 - [x] Deep context: complete assembly for short callees and two-level summaries; small gain over summaries, wrappers still at 0
 - [x] Real linking + stripping pipeline (`cikar_bin.py`, v4): tested on zlib, lua, tomlc17; [report](VERI_HATTI_V4.md)
+- [x] v6 anonymized Ghidra pseudocode preparation, training and final evaluation; mixed results, not a compute-matched ablation
 
 **3. Small model**
 - [x] First LoRA attempts (0.5B): unsuccessful due to prefix memorization and mode collapse
 - [x] 1.5B model with call context: name F1 0.044, does not generalize
 - [x] Qwen3-8B + LoRA: name F1 0.106 (v4 test), 0.094 (`eval_115`)
 - [x] Qwen3-8B + LoRA v5 (description + name): name F1 0.124 (v4 test), 0.155 (`eval_115`)
+- [x] Qwen3-8B + LoRA v6 (assembly + context + pseudocode): name F1 0.135 (fixed test), 0.135 (`eval_115`); both planned F1 targets missed
 - [x] Distillation data: a teacher model with access to source code (mimo-v2.6-pro) wrote a one-sentence Turkish description for all 17,581 functions (12,5 words on average)
 - [x] Have the small model generate both a name and a description (v5: English + Turkish)
 
@@ -218,7 +258,8 @@ The first zlib evaluation (v1, 60 functions) used a simpler data pipeline that i
 
 **5. Release**
 - [x] Publish the model: [krxi123/asmsense-qwen3-8b-lora](https://huggingface.co/krxi123/asmsense-qwen3-8b-lora) (LoRA adapter for Qwen3-8B)
-- [ ] Comparative write-up
+- [x] Publish v6: [krxi123/asmsense-lora-v6](https://huggingface.co/krxi123/asmsense-lora-v6) (Apache-2.0 adapter, model card, full-precision name report and matched explanation audit)
+- [x] Comparative results and limitations in README sections 6–7 and the v6 model card
 
 ## Run it yourself
 
@@ -310,4 +351,4 @@ Evaluations were run on infrastructure in Türkiye provided by the [EVREN](https
 
 ## License
 
-The code is licensed under MIT. Assembly under `veri/` is subject to the licenses of the projects from which it was compiled: [veri/LISANSLAR.md](veri/LISANSLAR.md).
+The pipeline code is licensed under MIT. Assembly and Ghidra-derived pseudocode retain the licenses and notices of their original source projects: [veri/LISANSLAR.md](veri/LISANSLAR.md). The v6 adapter is released separately under [Apache-2.0](https://huggingface.co/krxi123/asmsense-lora-v6/blob/main/LICENSE); that declaration does not relicense the mixed source corpus.
