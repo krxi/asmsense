@@ -6,7 +6,7 @@
 
 ## Güncel durum
 
-v4 veri seti, 5 optimizasyon seviyesinde 341 projeden 228.177 fonksiyon içeriyor ve [Hugging Face'te](https://huggingface.co/datasets/krxi123/asmsense) `v4` config'iyle yayımlanıyor. Ghidra betiği hazır. Şimdiye kadarki en iyi küçük model, v5 verisiyle (önce açıklama, sonra ad) eğitilen Qwen3-8B + LoRA: sabit v4 test örnekleminde ad F1 0.124, `eval_115`'te 0.155; çağrı bağlamı verilen en iyi büyük model aynı test örnekleminde 0.167. Bkz. Sonuçlar, bölüm 6. Model adla birlikte tek cümlelik İngilizce ve Türkçe açıklama yazıyor. Adaptör Hugging Face'te: [krxi123/asmsense-qwen3-8b-lora](https://huggingface.co/krxi123/asmsense-qwen3-8b-lora).
+v4 veri seti, 5 optimizasyon seviyesinde 341 projeden 228.177 fonksiyon içeriyor ve [Hugging Face'te](https://huggingface.co/datasets/krxi123/asmsense) `v4` config'iyle yayımlanıyor. Qwen3-8B + LoRA v6, assembly ve çağrı bağlamına anonimleştirilmiş Ghidra pseudocode'u ekliyor: sabit 2.000 satırlık testte ad F1 v5'in 0,124 değerinden 0,135'e çıkıyor, fakat `eval_115`'te 0,155'ten 0,135'e düşüyor. Kazanım iki kontrolde birden görülmedi; planlanan iki F1 hedefi de (0,14 / 0,17) kaçtı. Kaynak kodu gören İngilizce açıklama denetiminde 294 başarılı kararın 62'si doğru (%21,1), altı hakem çıktısı çözülemedi; %25 hedefi de kaçtı. Modelin önerileri yine insan incelemesi gerektiriyor. Bkz. Sonuçlar, bölüm 6–7. [v6 Apache-2.0 adaptörü ve tam duyarlıklı kanıt](https://huggingface.co/krxi123/asmsense-lora-v6) yayımlandı; [tarihsel v5 adaptörü](https://huggingface.co/krxi123/asmsense-qwen3-8b-lora) ayrı tutuluyor.
 
 Ghidra ya da IDA ile stripped bir programı açtığınızda yüzlerce `FUN_00401a30` görürsünüz. Tersine mühendisliğin büyük kısmı, bunların ne iş yaptığını tek tek anlayıp adlandırmaktır. Bu proje o ilk adımı bir modele öğretmeyi amaçlıyor:
 
@@ -42,7 +42,7 @@ Bunu ölçmek için üç katman aynı test setinde karşılaştırılıyor:
    - dış kütüphane çağrıları (`memcpy`, `__stack_chk_fail`) ve string sabitleri (`; -> "out of memory"`) görünür kalır, çünkü gerçek bir binary'de de görünürler.
    
    Fonksiyonun gerçek adı kendi assembly'sinde geçiyorsa (ör. bir hata mesajında) satır `sizinti` olarak işaretlenir ve test setine alınmaz.
-3. **Ölçüm (`taban.py`):** Modele yalnız assembly verilir, ad tahmini istenir. Tahmin kelime örtüşmesiyle (F1) puanlanır. Böylece `crc32_update` ile `update_crc` gibi yakın tahminler de kısmen doğru sayılır.
+3. **İlk yalnız-assembly tabanı (`taban.py`):** Modele assembly verilir, ad tahmini istenir. Sonraki ölçümlerde çağrı bağlamı; v6'da ayrıca hazırlanmış, anonimleştirilmiş Ghidra pseudocode'u kullanılır. Tahmin kelime örtüşmesiyle (F1) puanlanır. Böylece `crc32_update` ile `update_crc` gibi yakın tahminler de kısmen doğru sayılır.
 
 ```
 loc_6:
@@ -59,13 +59,13 @@ jne     loc_6
 | | projeler | fonksiyon (-O0 + -O2) |
 |---|---|---|
 | Eğitim | zlib, libpng, sqlite, lua, mbedtls, zstd, libsodium, expat, brotli, jansson, lz4, libyaml, xxhash, cJSON | 16.804 |
-| Test (ezbere dayanıklı) | tomlc17, cyaml, mu_json_x, sajs, picomatch | 777 → ölçüm seti 115 |
+| Test (ezbere dayanıklı) | tomlc17, cyaml, mu_json_x, sajs, picomatch | 777 → ölçüm seti: 115 derlenmiş satır, 95 benzersiz kaynak fonksiyon |
 
 Veri seti Hugging Face'te: [krxi123/asmsense](https://huggingface.co/datasets/krxi123/asmsense) (eğitim 16.804, test 777, `eval_115` ölçüm seti, lisans metinleri dahil). Kaggle'da da var: [krxiii/asmsense](https://www.kaggle.com/datasets/krxiii/asmsense).
 
 ### Ölçeklenmiş veri (v4 hattı, 5 optimizasyon seviyesi)
 
-`olcekle.py` ile GitHub'dan seçilen izin verici lisanslı (MIT, BSD, Apache-2.0, ISC, zlib) C projeleri `cikar_bin.py` (gerçek dylib + `strip -x`) ile `-O0/-O1/-O2/-O3/-Os` seviyelerinde derlendi. Proje derleme betikleri çalıştırılmadı, dosyalar tek tek clang ile derlendi; derlenemeyen dosya ve proje atlandı. Normalize assembly hash'iyle tekilleştirildi; doğrulama/test ile aynı assembly'yi taşıyan satırlar eğitimden, eğitimdeki (dosya, ad) çiftini taşıyan vendored kopyalar doğrulama/testten çıkarıldı. Her satırda `lisans` alanı var.
+`olcekle.py` ile GitHub'dan seçilen izin verici lisanslı (MIT, BSD, Apache-2.0, ISC, zlib) C projeleri `cikar_bin.py` (gerçek dylib + `strip -x`) ile `-O0/-O1/-O2/-O3/-Os` seviyelerinde derlendi. Proje derleme betikleri çalıştırılmadı, dosyalar tek tek clang ile derlendi; derlenemeyen dosya ve proje atlandı. Normalize assembly hash'iyle tekilleştirildi; doğrulama/test ile aynı assembly'yi taşıyan satırlar eğitimden, eğitimdeki (dosya, ad) çiftini taşıyan satırlar doğrulama/testten çıkarıldı. Bu, yeniden adlandırılmış veya taşınmış bütün vendored kopyaları kaldırmaz. Her satırda `lisans` alanı var.
 
 | ayrım | proje | satır | benzersiz kaynak fonksiyon |
 |---|---:|---:|---:|
@@ -75,9 +75,9 @@ Veri seti Hugging Face'te: [krxi123/asmsense](https://huggingface.co/datasets/kr
 
 473 projeden 352'si satır üretti, 120'si derlenemedi (çekirdek, gömülü, platforma bağlı kod). Yalnız clang kullanıldı. Veri git dışında; `python3 aday_bul.py` ve `python3 olcekle.py hepsi` ile yeniden üretilir.
 
-Eğitim/test ayrımı **proje bazındadır**: bir projenin hiçbir fonksiyonu iki tarafa birden düşmez. Test projeleri bilerek az bilinen (2-190 yıldız), çoğu 2024-2025'te başlamış projelerden seçildi; büyük modellerin bunları eğitimde görmüş olma ihtimali zlib'e göre çok düşük. Lisanslar: [veri/LISANSLAR.md](veri/LISANSLAR.md).
+Eğitim/test ayrımı **kök proje kimliklerinde** ayrıdır: aynı kök projenin satırları iki tarafa düşmez, ancak vendored kaynak aileleri bu sınırı aşabilir. Test projeleri bilerek az bilinen (2-190 yıldız), çoğu 2024-2025'te başlamış projelerden seçildi; bu, zlib'e kıyasla bariz ön-eğitim örtüşmesi riskini azaltır ama yokluğunu kanıtlamaz. Lisanslar: [veri/LISANSLAR.md](veri/LISANSLAR.md).
 
-**Bilinen istisna: gömülü kod.** Yayımlanmış v6 verisinin bağımsız denetimi ([rapor/arastirma/V6_VERI_DENETIMI.md](rapor/arastirma/V6_VERI_DENETIMI.md), `veri_denetim_v6.py`) hiçbir proje, kimlik veya (proje, dosya, ad) üçlüsünün iki tarafa birden düşmediğini doğruladı. Ancak test projesi `snkv`, SQLite'ı kendi dosya adlarıyla gömüyor ve `sqlite` bir eğitim projesi. Sabit 2.000 satırlık test örnekleminde 217 satırın (%10,85) adı bir SQLite eğitim fonksiyonuyla birebir aynı. Bütün modeller bu satırlarda *daha düşük* puan alıyor; yani sonuçları şişirmiyor, küçük-büyük model farkını daraltıyor (Sonuçlar, bölüm 6). Doğrulama örneklemi `valid_300`'de 16 benzer satır (%5,3) var.
+**Bilinen istisna: gömülü kod.** Yayımlanmış v6 verisinin bağımsız denetimi ([rapor/arastirma/V6_VERI_DENETIMI.md](rapor/arastirma/V6_VERI_DENETIMI.md), `veri_denetim_v6.py`) ortak kök proje kimliği, satır kimliği veya (proje, dosya, ad) anahtarı bulmadı. Ancak test projesi `snkv`, SQLite'ı kendi dosya adlarıyla gömüyor ve `sqlite` bir eğitim projesi. Sabit 2.000 satırlık test örnekleminde 217 satırın (%10,85) adı bir SQLite eğitim fonksiyonuyla birebir aynı; `valid_300`'de 16 benzer satır (%5,3) var. Bunlar ad-örtüşmesi adaylarıdır, doğrulanmış aynı-kaynak sayısı değildir. Tarihsel skor dilimleri örtüşmenin sonuçlara etkisini kanıtlamaz; ayrıntılı içerik sayımı ve sınırları aşağıda ayrıca raporlanır.
 
 ## Sonuçlar
 
@@ -153,30 +153,36 @@ Qwen2.5-Coder-0.5B (4-bit), 1.500 adım (~1 saat 40 dk, 4,8 GB bellek). İki den
 
 ### 6. Daha büyük küçük modeller: 1.5B ve 8B LoRA
 
-Aynı sabit v4 test örneklemi (`lora/test_sabit_idler.txt`, az bilinen test projeleri) ve `eval_115` seti. Gerçek ad F1'i tahmini gerçek adla karşılaştırır; öneksiz F1 proje önekini iki taraftan atar. Ayrıntı: [rapor/MOLAB_IKI_F1.md](rapor/MOLAB_IKI_F1.md), [sonuc/SABIT500_LORA15_V3.md](sonuc/SABIT500_LORA15_V3.md).
+Aynı sabit v4 test örneklemi (`lora/test_sabit_idler.txt`, az bilinen test projeleri) ve `eval_115` seti. Gerçek ad F1'i tahmini gerçek adla karşılaştırır; öneksiz F1 proje önekini iki taraftan atar. F1, fonksiyon başına ad-token F1'inin ortalamasıdır; doğru açıklama oranı veya birebir doğru ad yüzdesi değildir. Ayrıntı: [rapor/MOLAB_IKI_F1.md](rapor/MOLAB_IKI_F1.md), [sonuc/SABIT500_LORA15_V3.md](sonuc/SABIT500_LORA15_V3.md).
 
-| model | test | n | gerçek ad F1 (-O0 / -O2 / hepsi) | öneksiz F1 (hepsi) | tam isabet (gerçek / öneksiz) |
+| model | test | n | gerçek ad F1 (-O0 / -O2 / hepsi) | öneksiz F1 (hepsi) | F1=1 (gerçek / öneksiz) |
 |---|---|---:|---|---:|---|
 | mimo-v2.6-pro, çağrı bağlamlı (büyük, referans) | v4 test, sabit örneklem | 2.000 | 0.178 / 0.154 / 0.167 | 0.170 | 40 / 45 |
 | deepseek-v4.1-flash, çağrı bağlamlı (büyük, referans) | v4 test, sabit örneklem | 2.000 | 0.161 / 0.130 / 0.154 | 0.156 | 40 / 45 |
-| **Qwen3-8B + LoRA v5** (açıklama → ad, 95 bin satır, 1 epoch) | v4 test, sabit örneklem | 2.000 | 0.127 / 0.098 / **0.124** | 0.126 | 26 / 31 |
-| **Qwen3-8B + LoRA v5** | `eval_115` | 115 | 0.188 / 0.120 / **0.155** | 0.173 | 1 / 2 |
+| **Qwen3-8B + LoRA v6** (assembly + bağlam + Ghidra pseudocode'u) | v4 test, sabit örneklem | 2.000 | 0.140 / 0.112 / **0.135** | 0.137 | 31 / 37 |
+| **Qwen3-8B + LoRA v6** | `eval_115` | 115 | 0.175 / 0.092 / **0.135** | 0.153 | 2 / 3 |
+| Qwen3-8B + LoRA v5 (açıklama → ad, 95 bin satır, 1 epoch) | v4 test, sabit örneklem | 2.000 | 0.127 / 0.098 / 0.124 | 0.126 | 26 / 31 |
+| Qwen3-8B + LoRA v5 | `eval_115` | 115 | 0.188 / 0.120 / 0.155 | 0.173 | 1 / 2 |
 | Qwen3-8B + LoRA v1 (yalnız ad, 41 bin satır × 2 epoch) | v4 test, sabit örneklem | 2.000 | 0.108 / 0.093 / 0.106 | 0.108 | 25 / 33 |
 | Qwen3-8B + LoRA v1 | `eval_115` | 115 | 0.102 / 0.085 / 0.094 | 0.111 | 1 / 4 |
 | Qwen2.5-Coder-1.5B + LoRA v3, çağrı bağlamlı (MLX, laptop) | sabit örneklemin ilk 500'ü | 500 | 0.044 | 0.045 | 0 |
 | Qwen2.5-Coder-1.5B + LoRA v3, yalnız assembly | sabit örneklemin ilk 500'ü | 500 | 0.037 | 0.038 | 0 |
 
-**Gömülü proje dışında.** `snkv` olmadan (2.000 satırın 1.491'i) ad F1 v5'te 0.132, çağrı bağlamlı mimo-v2.6-pro'da 0.190; eşli fark −0.044 [−0.076, −0.021] yerine −0.058 [−0.082, −0.033] (proje kümeli bootstrap, 2.000 çekim). Yukarıdaki başlık rakamları önceki koşularla karşılaştırılabilir kalsın diye 2.000 satırın hepsini kullanır.
+Tablodaki tarihsel “tam isabet” sayıları ad-token F1=1 anlamındadır; token sırası veya büyük/küçük harfi farklı adları da kapsayabilir. v6'nın birebir string eşleşme sayısı sabit testte 21, `eval_115`'te 1'dir ve F1=1 sayısından ayrıdır.
+
+**Gömülü proje dışında (tarihsel v5 karşılaştırması; v6 sonucu değil).** `snkv` olmadan (2.000 satırın 1.491'i) ad F1 v5'te 0.132, çağrı bağlamlı mimo-v2.6-pro'da 0.190; eşli v5 − mimo farkı −0.044 [−0.076, −0.021] yerine −0.058 [−0.082, −0.033] (proje kümeli bootstrap, 2.000 çekim). Yukarıdaki başlık rakamları önceki koşularla karşılaştırılabilir kalsın diye 2.000 satırın hepsini kullanır.
 
 Aynı 500 satırda 8B 0.108, 1.5B 0.044 alıyor. 1.5B adaptörü yeni projelere genellemiyor ve ciddi mod çöküşü var (en sık tahmin satırların %13,6'sı). 8B, sıfırın belirgin üstüne çıkan ilk küçük model.
 
 **v5 ve v1 (aynı taban model, aynı 2.000 test satırı).** v5 veriyi ve hedefi değiştiriyor: her kaynak fonksiyon en az bir kez giriyor (95.000 satır, 72.061 fonksiyon), proje öneki kuralı düzeltildi, model önce tek cümle İngilizce açıklama, sonra ad, sonra Türkçe açıklama yazıyor. Gerçek ad F1 0.106'dan 0.124'e çıktı (eşli fark +0.018, %95 bootstrap aralığı +0.009 … +0.026), `eval_115`'te 0.094'ten 0.155'e. Eğitimdeki bir adın birebir kopyası olan tahminler %42'den %30'a indi. String sabiti olmayan fonksiyonlar hâlâ zor (0.093, önce 0.079; string'lilerde 0.299). Model aynı satırlarda çağrı bağlamlı mimo-v2.6-pro'nun 0.044 altında (aralık -0.053 … -0.034). Checkpoint 300 doğrulama satırında seçildi (5.938 adımın 4.500.'sü; doğrulama ad F1 0.263), test kümeleri bir kez ölçüldü.
 
-**Darboğaz açıklamanın doğruluğu.** Hakem model (mimo-v2.6-pro) modelin açıklamalarını 300 test satırında C kaynağıyla karşılaştırdı (`aciklama_puan_v5.py`): İngilizce açıklama %20,0 doğru, %15,3 kısmen doğru, %64,7 yanlış (Türkçe: %20,9 / %18,9 / %60,1). Açıklama doğruyken ad F1 0.306, yanlışken 0.054. Model fonksiyonu genellikle ne yaptığına inandığı şeyle tutarlı adlandırıyor; açık sorun fonksiyonu assembly'den anlamak.
+**v6 ve v5.** v6 aynı 95.000 eğitim satırı kimliğini ve hedefi koruyor; assembly ve çağrı bağlamına anonimleştirilmiş Ghidra pseudocode'u ekliyor. Checkpoint yalnız `valid_300`'de 12 planlı checkpoint arasındaki en yüksek ad-token F1'le seçildi: adım 4.500, F1 0,2680531506; test çıktıları eğitim bittikten sonra üretildi. Tam duyarlıklı, kimlik hizalı tahminlerde v6 − v5 farkı sabit 2.000 test satırında +0,011 [+0,002; +0,018], 115 `eval_115` satırında −0,020 [−0,057; +0,020]. Yöntem proje-kümeli eşli yüzdelik bootstrap, 2.000 çekim, tohum 42'dir. Sabit testteki artış ikinci küçük kontrolde tekrarlanmadı; iki planlı hedef de kaçtı. Ayrıca v6'nın ortalama eğitim konuşması v5'ten yaklaşık 1,39 kat uzun ve sistem istemi farklı; bu compute-eşlenmiş bir ablasyon değildir.
+
+**Açıklama kalitesi.** Kaynak kodu gören aynı otomatik hakem, v5 ve v6'yı aynı 300 test kimliğinde değerlendirdi. Tam 300 kimliklik paydada İngilizce doğru sayısı v5 için 59 (%19,67), v6 için 62 (%20,67): eşli fark +1,00 yüzde puan, proje-kümeli %95 aralık −0,91 … +4,03 puan. Altı v6 İngilizce kararı çözülemedi; hepsi doğru sayılsa bile 68/300=%22,67 ile %25 hedefi kaçıyor. Bu denetim insan onaylı doğruluk değildir. Tarihsel v5 denetiminde açıklama doğruyken ad F1 0.306, yanlışken 0.054'tü; açık sorun fonksiyonu assembly'den anlamak olmaya devam ediyor.
 
 Kırılım: [rapor/MOLAB_V5_KIRILIM.md](rapor/MOLAB_V5_KIRILIM.md); öğretmen etiket denetimi: [rapor/OGRETMEN_DENETIM.md](rapor/OGRETMEN_DENETIM.md).
 
-### 7. Decompile edilmiş kod işe yarıyor mu? (büyük model, ön deney)
+### 7. Decompile edilmiş kod işe yarıyor mu? (büyük model ön deneyi ve v6 LoRA)
 
 Eğitim verisini dönüştürmeden önce, sabit 2.000 test fonksiyonu Ghidra 12 ile decompile edildi (`decompile_ghidra.py`; proje içi adlar anonimleştirildi, metinde hedef adı kalan satır 0) ve mimo-v2.6-pro'ya verildi:
 
@@ -186,7 +192,7 @@ Eğitim verisini dönüştürmeden önce, sabit 2.000 test fonksiyonu Ghidra 12 
 | yalnız decompile (bağlamsız) | 0.173 | +0.006 (-0.002 … +0.014) | 36 |
 | assembly + çağrı bağlamı + decompile | **0.192** | **+0.025 (+0.018 … +0.032)** | 52 |
 
-Yalnız decompile, yaklaşık yarı girdi token'ıyla (fonksiyon başına ortanca 202 token) assembly + bağlam kadar iyi; assembly'ye eklenince belirgin kazanç var. Sıradaki adım: decompile'ı eğitim girdisine eklemek (v6).
+Bu tarihsel büyük-model deneyi v6'yı motive etti; tek başına 8B LoRA'nın yarar gördüğünü kanıtlamaz. Bölüm 6'daki v6 karşılaştırması sabit testte artış, `eval_115`'te düşüş gösteriyor. Ghidra pseudocode'u eğitimde 94.738/95.000 satırda (%99,7) var; 12.818 satırda (%13,5) 3.072 tokenlık konuşmaya sığdırmak için sondan kesildi. Sabit testte 1.999/2.000 satırda pseudocode var ve 347'si (%17,35) kesildi; `eval_115`'te 115/115 satırda var ve 15'i (%13,04) kesildi. Bunlar girdi kapsamıdır, azaltılmış test paydası değildir.
 
 ### Not: zlib ısınma turu ve veri hattındaki sızıntılar
 
@@ -203,12 +209,14 @@ Yalnız decompile, yaklaşık yarı girdi token'ıyla (fonksiyon başına ortanc
 - [x] Çağrı bağlamı (çağrılan fonksiyonların importları ve string'leri): büyük modellerde F1 belirgin arttı
 - [x] Derin bağlam: kısa çağrılanların tam assembly'si, iki seviye özet: özetin üstüne küçük kazanç, sarmalayıcılar hâlâ 0
 - [x] Gerçek link + strip ile veri hattı (`cikar_bin.py`, v4): zlib, lua, tomlc17'de denendi, [rapor](VERI_HATTI_V4.md)
+- [x] v6 anonimleştirilmiş Ghidra pseudocode hazırlama, eğitim ve nihai ölçüm: karışık sonuç, compute-eşlenmiş ablasyon değil
 
 **3. Küçük model**
 - [x] İlk LoRA denemeleri (0.5B): işe yaramadı, önek ezberi ve mod çöküşü
 - [x] 1.5B model, çağrı bağlamlı: gerçek ad F1 0.044, genellemiyor
 - [x] Qwen3-8B + LoRA: gerçek ad F1 0.106 (v4 test), 0.094 (`eval_115`)
 - [x] Qwen3-8B + LoRA v5 (açıklama + ad): gerçek ad F1 0.124 (v4 test), 0.155 (`eval_115`)
+- [x] Qwen3-8B + LoRA v6 (assembly + bağlam + pseudocode): gerçek ad F1 0.135 (sabit test), 0.135 (`eval_115`); iki hedef de kaçtı
 - [x] Damıtma verisi: kaynak kodu gören öğretmen model (mimo-v2.6-pro) 17.581 fonksiyonun hepsine tek cümlelik Türkçe açıklama yazdı (ort. 12,5 kelime)
 - [x] Küçük model ad + açıklama birlikte üretsin (v5: İngilizce + Türkçe)
 
@@ -217,7 +225,8 @@ Yalnız decompile, yaklaşık yarı girdi token'ıyla (fonksiyon başına ortanc
 
 **5. Yayın**
 - [x] Modeli yayımla: [krxi123/asmsense-qwen3-8b-lora](https://huggingface.co/krxi123/asmsense-qwen3-8b-lora) (Qwen3-8B için LoRA adaptörü)
-- [ ] Karşılaştırmalı yazı
+- [x] v6'yı yayımla: [krxi123/asmsense-lora-v6](https://huggingface.co/krxi123/asmsense-lora-v6) (Apache-2.0 adaptör, model kartı, tam duyarlıklı ad raporu ve eşlenmiş açıklama denetimi)
+- [x] README bölüm 6–7'de karşılaştırmalı sonuçları ve sınırları yaz
 
 ## Kendiniz çalıştırın
 
@@ -261,4 +270,4 @@ sh lora/egit.sh                                                 # ayarlar lora/a
 
 ## Lisans
 
-Kod MIT lisanslıdır. `veri/` altındaki assembly, derlenen projelerin kendi lisanslarına tabidir: [veri/LISANSLAR.md](veri/LISANSLAR.md).
+Veri hattı kodu MIT lisanslıdır. Assembly ve Ghidra'dan türetilen pseudocode, kaynak projelerin lisans ve bildirimlerini korur: [veri/LISANSLAR.md](veri/LISANSLAR.md). v6 adaptörü ayrıca [Apache-2.0](https://huggingface.co/krxi123/asmsense-lora-v6/blob/main/LICENSE) ile yayımlanmıştır; bu beyan karma kaynak derlemini yeniden lisanslamaz.
