@@ -15,8 +15,9 @@ first 24 lines of its disassembly (Intel syntax, internal calls renamed to `sub_
 its call context. For the 2,000 functions in the fixed test sample, it also includes the name and
 English description predicted by the [v6 adapter](https://huggingface.co/krxi123/asmsense-lora-v6).
 
-Library functions that the projects only import (`memcpy`, `malloc`, `printf`) have no body in the
-dataset. A search for `memcpy` finds functions whose own name contains it, such as `XXH_memcpy`.
+Only functions defined inside a project are in the dataset. A libc name such as `memcpy` appears only
+where a project ships its own copy; calls into the system C library have no body here. A search for
+`memcpy` also lists functions whose own name contains it, such as `XXH_memcpy`.
 
 ## Layout
 
