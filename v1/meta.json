@@ -1,0 +1,42 @@
+{
+ "format": 1,
+ "built": "2026-10-18",
+ "dataset": "krxi123/asmsense (config v4)",
+ "predictions": "krxi123/asmsense-lora-v6 test_sabit-sonuc.jsonl",
+ "records": 228177,
+ "names": 78320,
+ "projects": 341,
+ "tokens": 15686,
+ "name_shards": 512,
+ "token_shards": 64,
+ "asm_lines": 24,
+ "context_chars": 320,
+ "licenses": [
+  "MIT",
+  "BSD-3-Clause",
+  "BSD-2-Clause",
+  "Apache-2.0",
+  "0BSD",
+  "ISC",
+  "Zlib",
+  "libpng-2.0 (PNG Reference Library License)",
+  "BSD-2-Clause (lib/ only; GPL programs/ not used)",
+  "Apache-2.0 (Apache option of Apache-2.0 OR GPL-2.0+)",
+  "Public domain (SQLite); the mirror's BSD-3 covers only its CMake wrapper",
+  "BSD-2-Clause (library only; GPL cli/ not used)",
+  "BSD-3-Clause (BSD option of BSD/GPLv2)"
+ ],
+ "inputs_sha256": {
+  "train-00000.jsonl.gz": "0dd5c2dab4271aaadcbba059b5c6591008881fe8153e8ae454c8761292014358",
+  "validation-00000.jsonl.gz": "c4a670886ed834670c60fe2b4b8878c010779785ea5fa6ee9fe9c882d660e8a7",
+  "test-00000.jsonl.gz": "bc5e848e344f93787293c0b601aa2703bc0fc536a2a0b9266e21ec1a7ed146a6",
+  "v6.jsonl": "80cae09e152fa6cb42f1f5e6bec4ec35106a41049963bca1ba0ba71e29885be2"
+ },
+ "bytes": {
+  "names_max": 74796,
+  "names_total": 23003516,
+  "tokens_max": 65652,
+  "tokens_total": 2120668,
+  "vocab": 61203
+ }
+}
