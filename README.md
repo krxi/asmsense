@@ -38,10 +38,12 @@ tools/build_tree.py      builds projects.json.gz and p/
 `p/<project>.json.gz` lists the project's files and, for each (file, function name), one entry:
 `[name, file index, levels present, instructions, level shown, callees in the dataset, callees not in
 the dataset, library calls]`. Calls are read from one build per function, `-O0` when it exists.
-Inside a build, other project functions are named `sub_XXXX`; a call is resolved to a name when a
-record with that `sub_XXXX` exists for the same project, file and level. About a third of the 406,194
-internal calls resolve this way. For the rest, the call context still gives their size and the library
-functions they call. The largest project file is 88 KB; all 341 together are 1.4 MB.
+Each project's object files are linked into one dylib per level, so `sub_XXXX` ids are unique per
+project and level, and a call can go to a function in another file. A call is resolved to a name when a
+record with that `sub_XXXX` exists for the same project and level: 69% of all 406,194 internal calls,
+80% in the builds the tree uses. For the rest, the call context still gives their size and the library
+functions they call. `ext_XXXX` names are symbols from project files that did not compile. The largest
+project file is 87 KB; all 341 together are 1.4 MB.
 
 A name is split into lowercase tokens on `_`, camelCase boundaries and digits (`ComputeCRC32` →
 `compute`, `crc`, `crc32`). The shard for a key is `fnv1a32(key) % count`; the token shards use the
