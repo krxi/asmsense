@@ -163,8 +163,12 @@ Aynı sabit v4 test örneklemi (`lora/test_sabit_idler.txt`, az bilinen test pro
 | **Qwen3-8B + LoRA v5** | `eval_115` | 115 | 0.188 / 0.120 / **0.155** | 0.173 | 1 / 2 |
 | Qwen3-8B + LoRA v1 (yalnız ad, 41 bin satır × 2 epoch) | v4 test, sabit örneklem | 2.000 | 0.108 / 0.093 / 0.106 | 0.108 | 25 / 33 |
 | Qwen3-8B + LoRA v1 | `eval_115` | 115 | 0.102 / 0.085 / 0.094 | 0.111 | 1 / 4 |
+| Qwen3-8B, eğitilmemiş (v6 ile aynı girdi ve çözümleme, adaptörsüz) | v4 test, sabit örneklem | 2.000 | 0.039 / 0.026 / 0.036 | 0.037 | 6 / 6 |
+| Qwen3-8B, eğitilmemiş | `eval_115` | 115 | 0.045 / 0.015 / 0.031 | 0.033 | 0 / 0 |
 | Qwen2.5-Coder-1.5B + LoRA v3, çağrı bağlamlı (MLX, laptop) | sabit örneklemin ilk 500'ü | 500 | 0.044 | 0.045 | 0 |
 | Qwen2.5-Coder-1.5B + LoRA v3, yalnız assembly | sabit örneklemin ilk 500'ü | 500 | 0.037 | 0.038 | 0 |
+
+**Eğitilmemiş taban.** Bütün adaptörlerin temel checkpoint'i (`Qwen/Qwen3-8B`, revizyon `b968826d`) adaptörsüz olarak v6 final ölçümüyle aynı girdi, istem, chat template, greedy çözümleme (`enable_thinking=False`, `max_new_tokens=160`), bf16 ve GPU (molab, RTX PRO 6000) ile, koşudan önce yazılmış bir protokolle ([molab/TABAN_PROTOKOL.md](molab/TABAN_PROTOKOL.md), notebook `molab/taban.py`) ölçüldü. Ad F1 sabit testte 0.036 (6 tam F1=1), `eval_115`'te 0.031. Yayımlanan skorun büyük kısmı ince ayardan geliyor: v6 − taban sabit testte +0.099 [+0.073, +0.129], `eval_115`'te +0.105 [+0.022, +0.180]; v1 − taban +0.070 [+0.046, +0.096] ve +0.063 [+0.038, +0.088] (kimlik hizalı, proje kümeli bootstrap, 2.000 çekim, tohum 42; `olcum_taban.py`, [sonuc/olcum-taban.json](sonuc/olcum-taban.json)). Çıktılar 2.000 satırın 1.999'unda geçerli JSON; katı skor (geçersiz JSON = 0) aynı. Asıl hata kopyalama: sistem istemi örnek bir cevap içeriyor ve eğitilmemiş model bu örneğin adı `read_record`'u 2.000 satırın 768'inde, onu içeren bir adı 1.188'inde döndürüyor (`eval_115`'te 115'in 50 ve 72'si); eğitilmiş modellerin hiçbiri bunu yapmıyor. Bu kopyanın olmadığı 812 satırda F1 0.073; bu alt küme modelin kendi davranışıyla seçildiği için yalnız betimseldir. Yani taban, adaptörlerin eğitildiği istemi ölçer; eğitilmemiş model için en iyi istemi değil.
 
 **Gömülü proje dışında.** `snkv` olmadan (2.000 satırın 1.491'i) ad F1 v5'te 0.132, çağrı bağlamlı mimo-v2.6-pro'da 0.190; eşli fark −0.044 [−0.076, −0.021] yerine −0.058 [−0.082, −0.033] (proje kümeli bootstrap, 2.000 çekim). Yukarıdaki başlık rakamları önceki koşularla karşılaştırılabilir kalsın diye 2.000 satırın hepsini kullanır.
 
