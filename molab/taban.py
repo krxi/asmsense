@@ -19,6 +19,7 @@ app = marimo.App(width="medium")
 @app.cell
 def _():
     import marimo as mo
+
     return (mo,)
 
 
@@ -114,7 +115,11 @@ def _():
 
     def sablon_ids(tokenizer, mesajlar):
         cikti = tokenizer.apply_chat_template(
-            mesajlar, tokenize=True, add_generation_prompt=True, enable_thinking=False, return_dict=False,
+            mesajlar,
+            tokenize=True,
+            add_generation_prompt=True,
+            enable_thinking=False,
+            return_dict=False,
         )
         if hasattr(cikti, "keys"):
             cikti = cikti["input_ids"]
@@ -164,17 +169,30 @@ def _():
         if not torch.cuda.is_available() or not torch.cuda.is_bf16_supported():
             raise RuntimeError("CUDA ve bf16 destekli GPU gerekli.")
         bolumler = veri_hazirla(logger)
-        ortam = {"model": MODEL, "revizyon": REVIZYON, "adaptor": None, "dtype": "bfloat16",
-                 "attn": "sdpa", "max_new_tokens": 160, "do_sample": False, "enable_thinking": False,
-                 "transformers": transformers.__version__, "torch": torch.__version__,
-                 "gpu": torch.cuda.get_device_name(0)}
+        ortam = {
+            "model": MODEL,
+            "revizyon": REVIZYON,
+            "adaptor": None,
+            "dtype": "bfloat16",
+            "attn": "sdpa",
+            "max_new_tokens": 160,
+            "do_sample": False,
+            "enable_thinking": False,
+            "transformers": transformers.__version__,
+            "torch": torch.__version__,
+            "gpu": torch.cuda.get_device_name(0),
+        }
         logger.info("Ortam: %s", json.dumps(ortam, ensure_ascii=False))
         tokenizer = AutoTokenizer.from_pretrained(MODEL, revision=REVIZYON)
         if tokenizer.pad_token_id is None:
             tokenizer.pad_token = tokenizer.eos_token
         model, yukleme = AutoModelForCausalLM.from_pretrained(
-            MODEL, revision=REVIZYON, dtype=torch.bfloat16, device_map={"": 0},
-            attn_implementation="sdpa", output_loading_info=True,
+            MODEL,
+            revision=REVIZYON,
+            dtype=torch.bfloat16,
+            device_map={"": 0},
+            attn_implementation="sdpa",
+            output_loading_info=True,
         )
         if yukleme.get("missing_keys") or yukleme.get("mismatched_keys"):
             raise RuntimeError("Model ağırlıkları eksik/uyumsuz yüklendi.")
@@ -194,17 +212,32 @@ def _():
                     if len(ids) > 3072:
                         raise ValueError(f"{r['id']}: üretim girdisi 3072 tokenı aşıyor.")
                     girdi = torch.tensor([ids], device=model.device)
-                    sonuc = model.generate(input_ids=girdi, attention_mask=torch.ones_like(girdi),
-                                           do_sample=False, max_new_tokens=160, use_cache=True,
-                                           pad_token_id=tokenizer.pad_token_id)
-                    yeni = sonuc[0, len(ids):]
+                    sonuc = model.generate(
+                        input_ids=girdi,
+                        attention_mask=torch.ones_like(girdi),
+                        do_sample=False,
+                        max_new_tokens=160,
+                        use_cache=True,
+                        pad_token_id=tokenizer.pad_token_id,
+                    )
+                    yeni = sonuc[0, len(ids) :]
                     ham = tokenizer.decode(yeni, skip_special_tokens=True)
                     ad, en, tr, gecerli = ad_ayikla(ham)
-                    satir = {"id": r["id"], "gercek": r["gercek_ad"], "tahmin": ad,
-                             "aciklama_en": en, "aciklama": tr, "gecerli_json": gecerli,
-                             "f1": f1(ad, r["gercek_ad"]), "opt": r["opt"], "proje": r["proje"],
-                             "token": len(ids) + len(yeni), "yeni_token": len(yeni),
-                             "sinira_dayandi": len(yeni) >= 160, "ham": ham}
+                    satir = {
+                        "id": r["id"],
+                        "gercek": r["gercek_ad"],
+                        "tahmin": ad,
+                        "aciklama_en": en,
+                        "aciklama": tr,
+                        "gecerli_json": gecerli,
+                        "f1": f1(ad, r["gercek_ad"]),
+                        "opt": r["opt"],
+                        "proje": r["proje"],
+                        "token": len(ids) + len(yeni),
+                        "yeni_token": len(yeni),
+                        "sinira_dayandi": len(yeni) >= 160,
+                        "ham": ham,
+                    }
                     dosya.write(json.dumps(satir, ensure_ascii=False) + "\n")
                     dosya.flush()
                     if i % 100 == 0:
@@ -248,10 +281,12 @@ def _(mo):
 def _(baslat, mo, olc):
     mo.stop(not baslat.value, mo.md("Hazır olunca **Başlat**'a bas."))
     zip_yolu, ozet = olc()
-    mo.vstack([
-        mo.md(f"```\n{__import__('json').dumps(ozet['bolumler'], indent=2)}\n```"),
-        mo.download(data=zip_yolu.read_bytes(), filename=zip_yolu.name, label=f"İndir: {zip_yolu.name}"),
-    ])
+    mo.vstack(
+        [
+            mo.md(f"```\n{__import__('json').dumps(ozet['bolumler'], indent=2)}\n```"),
+            mo.download(data=zip_yolu.read_bytes(), filename=zip_yolu.name, label=f"İndir: {zip_yolu.name}"),
+        ]
+    )
     return
 
 

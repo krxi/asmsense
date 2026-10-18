@@ -42,7 +42,7 @@ jobs:
             onceki=$ONCEKI
           fi
           {
-            printf '%s\n' conftest.py iki_f1.py onek_denetim.py
+            printf '%s\n' conftest.py iki_f1.py onek_denetim.py molab/taban.py olcum_taban.py
             git ls-files 'tests/*.py'
             if [ -n "$taban" ]; then git diff --name-only --diff-filter=A "$taban" HEAD -- '*.py'; fi
             if [ -n "$onceki" ]; then git diff --name-only --diff-filter=A "$onceki" HEAD -- '*.py'; fi
