@@ -15,6 +15,7 @@ Written 2026-10-18, before any baseline output was generated. The goal is one nu
 | Decoding | greedy (`do_sample=False`), `max_new_tokens=160`, `use_cache=True`, batch size 1 |
 | Precision | bf16, SDPA attention, one GPU |
 | Hardware | molab, the environment of the v6 final evaluation (RTX PRO 6000 96 GB); any difference is reported |
+| Packages | `transformers==5.3.0` and the rest of the `molab/egit.py` dependency header; the run log records the versions actually loaded |
 | Notebook | `molab/taban.py` |
 
 ## Scoring

@@ -1,3 +1,15 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "transformers==5.3.0",
+#     "accelerate>=1.12,<2",
+#     "huggingface_hub>=1.0,<2",
+#     "torch>=2.6",
+#     "marimo>=0.15.2",
+# ]
+# ///
+# Paket sürümleri v6 final ölçümünün koştuğu molab/egit.py ile aynı (transformers 5.3.0).
+
 import marimo
 
 __generated_with = "0.15.2"
