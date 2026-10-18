@@ -33,8 +33,8 @@
   "v6.jsonl": "80cae09e152fa6cb42f1f5e6bec4ec35106a41049963bca1ba0ba71e29885be2"
  },
  "bytes": {
-  "names_max": 74796,
-  "names_total": 23003516,
+  "names_max": 74829,
+  "names_total": 22990143,
   "tokens_max": 65652,
   "tokens_total": 2120668,
   "vocab": 61203

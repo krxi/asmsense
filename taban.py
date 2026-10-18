@@ -1,0 +1,358 @@
+#!/usr/bin/env python3
+"""Taban ölçüm: hazır bir Evren modeli stripped fonksiyona ne kadar doğru isim veriyor?
+
+  python3 taban.py veri/zlib.jsonl -n 60 -m deepseek-v4.1-flash
+
+Skor: tahmin ve gerçek adı kelimelere böl (snake/camel), kelime örtüşmesinin F1'i.
+Tam doğruluk nadir olur; F1 "yakın mı" sorusunu ölçer (crc32_update ~ update_crc).
+"""
+import argparse, json, os, random, re, sys, time, urllib.error, urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+
+BASE = os.environ.get("EVREN_BASE_URL", "https://evren-llmapi.ssyz.org.tr/v1")
+SISTEM = ("Sen deneyimli bir tersine mühendissin. Sana sembolleri silinmiş bir x86-64 fonksiyonu "
+          "(Intel sözdizimi) verilecek. Projenin iç fonksiyonları sub_XXXX diye gizlendi; dış "
+          "kütüphane çağrıları görünür. Fonksiyonun asıl kaynak koddaki adını tahmin et. "
+          'Yalnız JSON dön: {"ad": "snake_case_tahmin", "aciklama": "tek cümle Türkçe"}')
+SISTEM_BAGLAM = SISTEM + " Çağrılan iç fonksiyonların özetleri asm'nin altında verildi."
+SISTEM_DECOMPILE = ("Sen deneyimli bir tersine mühendissin. Sana sembolleri silinmiş bir x86-64 "
+                    "fonksiyonunun Ghidra ile üretilmiş C benzeri sözde kodu verilecek. Projenin iç "
+                    "fonksiyonları FUN_XXXX veya sub_XXXX diye gizlendi; dış kütüphane çağrıları "
+                    "görünür. Fonksiyonun asıl kaynak koddaki adını tahmin et. "
+                    'Yalnız JSON dön: {"ad": "snake_case_tahmin", "aciklama": "tek cümle Türkçe"}')
+SISTEM_IKISI = ("Sen deneyimli bir tersine mühendissin. Sana sembolleri silinmiş bir x86-64 "
+                "fonksiyonunun Intel assembly'si ve Ghidra ile üretilmiş C benzeri sözde kodu "
+                "verilecek. Projenin iç fonksiyonları FUN_XXXX veya sub_XXXX diye gizlendi; dış "
+                "kütüphane çağrıları görünür. Fonksiyonun asıl kaynak koddaki adını tahmin et. "
+                'Yalnız JSON dön: {"ad": "snake_case_tahmin", "aciklama": "tek cümle Türkçe"}')
+
+
+def anahtar() -> str:
+    if k := os.environ.get("EVREN_LLM_API_KEY"):
+        return k
+    for satir in Path(os.environ.get("EVREN_ENV", "~/Desktop/evren.env")).expanduser().read_text().splitlines():
+        ad, _, deger = satir.partition("=")
+        if ad.strip() == "EVREN_LLM_API_KEY":
+            return deger.strip().strip('"')
+    sys.exit("anahtar yok")
+
+
+def evren_istek(model: str, mesajlar: list[dict], max_tokens: int = 2048, **ek) -> dict:
+    """Evren sohbet uç noktasına düşünme kapalı bir istek gönderir.
+
+    Genel tutulan bu yardımcı denetim gibi farklı istem kullanan ölçümlerin de aynı
+    BASE/anahtar/yeniden-deneme yolunu kullanabilmesini sağlar.
+    """
+    govde = {"model": model, "temperature": 0, "max_tokens": max_tokens,
+             "chat_template_kwargs": {"enable_thinking": False}, "messages": mesajlar}
+    govde.update(ek)
+    son = None
+    for deneme in range(6):
+        try:
+            istek = urllib.request.Request(BASE + "/chat/completions", data=json.dumps(govde).encode(),
+                                           headers={"X-API-Key": anahtar(), "Content-Type": "application/json"})
+            return json.load(urllib.request.urlopen(istek, timeout=900))
+        except urllib.error.HTTPError as hata:
+            son = hata
+            if hata.code not in (429, 503):
+                raise
+        except Exception as hata:
+            son = hata
+        if deneme < 5:
+            time.sleep(2 ** deneme + random.random())
+    assert son is not None
+    raise son
+
+
+def sistem_istemi(girdi: str = "asm", baglam: bool = False) -> str:
+    if girdi == "decompile":
+        return SISTEM_DECOMPILE
+    if girdi == "ikisi":
+        return SISTEM_IKISI + (" Çağrılan iç fonksiyonların özetleri assembly'nin altında verildi."
+                               if baglam else "")
+    return SISTEM_BAGLAM if baglam else SISTEM
+
+
+def sor(model: str, asm: str, dusunme: bool = False, tavan: int = 4096, baglam: bool = False,
+        girdi: str = "asm") -> dict:
+    # Düşünme açıkken bazı modeller 16K token'lık döngüye girip dakikalarca bekletiyor:
+    # varsayılan kapalı, açıkken max_tokens tavanı var. Tavana çarpan cevap "kesik" sayılır.
+    govde = {"model": model, "temperature": 0,
+             "messages": [{"role": "system", "content": sistem_istemi(girdi, baglam)},
+                          {"role": "user", "content": asm}]}
+    if dusunme:
+        govde["max_tokens"] = tavan
+    else:
+        # glm-5.3 düşünme kapalıyken de cevaptan önce uzun gerekçe yazabiliyor: tavansız istek
+        # dakikalarca sürüp zaman aşımına düşüyor.
+        govde["chat_template_kwargs"] = {"enable_thinking": False}
+        govde["max_tokens"] = 2048
+    try:
+        ek = ({"chat_template_kwargs": {"enable_thinking": True}} if dusunme else {})
+        yanit = evren_istek(model, govde["messages"], max_tokens=govde.get("max_tokens", 2048), **ek)
+        secim = yanit["choices"][0]
+        metin = secim["message"].get("content") or ""
+        token = yanit.get("usage", {}).get("total_tokens", 0)
+        m = re.findall(r"\{[^{}]*\}", metin)
+        try:
+            cevap = json.loads(m[-1]) if m else {"ad": metin.strip()[:60], "aciklama": ""}
+        except json.JSONDecodeError:
+            cevap = {"ad": "", "aciklama": metin.strip()[:200]}
+        return {**cevap, "token": token, "bitis": secim.get("finish_reason")}
+    except Exception as hata:
+        return {"ad": "", "aciklama": f"HATA: {hata}", "token": 0}
+
+
+def token_tahmini(metin: str) -> int:
+    """Tokenizer gerektirmeyen, yaklaşık dört karakter/token hesabı."""
+    return (len(metin) + 3) // 4
+
+
+def model_girdisi(r: dict, baglam: bool = False, baglam_derin: bool = False,
+                  girdi: str = "asm", decompile=None) -> str:
+    alan = "baglam_derin" if baglam_derin else "baglam"
+    asm = r["asm"]
+    if (baglam or baglam_derin) and r.get(alan):
+        asm += "\n\n; --- çağrılan fonksiyonlar ---\n" + r[alan]
+    if girdi == "asm":
+        return asm
+    if decompile is None:
+        raise ValueError(f"{r['id']}: decompile yok")
+    if girdi == "decompile":
+        return decompile
+    if girdi == "ikisi":
+        return asm + "\n\n/* --- Ghidra decompile --- */\n" + decompile
+    raise ValueError(f"bilinmeyen girdi: {girdi}")
+
+
+def decompile_oku(yol: Path) -> dict[str, str]:
+    sonuc = {}
+    for no, satir in enumerate(yol.open(), 1):
+        r = json.loads(satir)
+        if "id" not in r or "decompile" not in r:
+            raise SystemExit(f"--decompile satır {no}: id/decompile alanı eksik")
+        if r["id"] in sonuc:
+            raise SystemExit(f"--decompile içinde yinelenen id: {r['id']}")
+        if r["decompile"]:
+            sonuc[r["id"]] = r["decompile"]
+    return sonuc
+
+
+def idlerle_sec(satirlar: list[dict], idler_yolu: Path) -> list[dict]:
+    idler = [satir.strip() for satir in idler_yolu.read_text().splitlines() if satir.strip()]
+    kimlikten = {r["id"]: r for r in satirlar}
+    eksik = [kimlik for kimlik in idler if kimlik not in kimlikten]
+    if eksik:
+        ornek = ", ".join(eksik[:3])
+        raise SystemExit(f"--idler içindeki {len(eksik)} id veride yok: {ornek}")
+    return [kimlikten[kimlik] for kimlik in idler]
+
+
+def kelimeler(ad: str) -> list[str]:
+    ad = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", ad)
+    return [k for k in re.split(r"[_\W]+", ad.lower()) if k]
+
+
+# --esanlam: aynı işi anlatan sözcükler tek temsilciye indirilir (get_size ~ fetch_length). Elle seçilmiş,
+# muhafazakâr bir liste; f1() bunu kullanmaz, yalnız --kismi/--esanlam raporundaki ek sütunları etkiler.
+ESANLAM_GRUPLARI = (
+    ("get", "fetch", "read", "load", "retrieve", "obtain"),
+    ("find", "lookup", "search"),
+    ("set", "put", "store", "write", "assign", "save"),
+    ("free", "release", "destroy", "delete", "dealloc", "dispose", "cleanup"),
+    ("alloc", "allocate", "malloc", "new", "create", "make"),
+    ("init", "initialize", "setup"),
+    ("len", "length", "size"),
+    ("cmp", "compare"),
+    ("eq", "equal", "equals"),
+    ("str", "string"),
+    ("buf", "buffer"),
+    ("err", "error"),
+    ("msg", "message"),
+    ("idx", "index"),
+    ("ptr", "pointer"),
+    ("num", "number"),
+    ("val", "value"),
+    ("cfg", "config", "conf", "configuration"),
+    ("ctx", "context"),
+    ("emit", "print", "dump", "output"),
+    ("check", "validate", "verify"),
+)
+ESANLAM = {k: grup[0] for grup in ESANLAM_GRUPLARI for k in grup}
+
+
+def kelime_pr(tahmin: str, gercek: str, esanlam: bool = False) -> tuple:
+    """Sözcük kümesi precision ve recall'u. f1() ile aynı bölme; esanlam=True ise ESANLAM'a indirger.
+
+    precision düşük, recall yüksek: tahmin doğru sözcükleri içeriyor ama fazlasını da ekliyor.
+    precision yüksek, recall düşük: tahmin doğru ama eksik (ör. yalnız "update").
+    """
+    t, g = set(kelimeler(tahmin)), set(kelimeler(gercek))
+    if esanlam:
+        t, g = {ESANLAM.get(k, k) for k in t}, {ESANLAM.get(k, k) for k in g}
+    ortak = len(t & g)
+    if not ortak:
+        return 0.0, 0.0
+    return ortak / len(t), ortak / len(g)
+
+
+def harmonik(p: float, r: float) -> float:
+    return 2 * p * r / (p + r) if p + r else 0.0
+
+
+def f1(tahmin: str, gercek: str) -> float:
+    t, g = kelimeler(tahmin), kelimeler(gercek)
+    ortak = len(set(t) & set(g))
+    if not ortak:
+        return 0.0
+    p, r = ortak / len(set(t)), ortak / len(set(g))
+    return 2 * p * r / (p + r)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("veri", type=Path)
+    ap.add_argument("-n", type=int, default=60)
+    ap.add_argument("-m", "--model", default="deepseek-v4.1-flash")
+    ap.add_argument("-j", type=int, default=8)
+    ap.add_argument("--tohum", type=int, default=7)
+    ap.add_argument("--dusunme", action="store_true", help="modelin düşünmesini aç (yavaş, pahalı)")
+    ap.add_argument("--tavan", type=int, default=4096, help="düşünmede max_tokens")
+    baglam_grubu = ap.add_mutually_exclusive_group()
+    baglam_grubu.add_argument("--baglam", action="store_true",
+                              help="çağrılan iç fonksiyonların özetlerini asm'ye ekle")
+    baglam_grubu.add_argument("--baglam-derin", action="store_true",
+                              help="çağrılan iç fonksiyonların derin bağlamını asm'ye ekle")
+    ap.add_argument("--devam", action="store_true",
+                    help="var olan sonuç dosyasındaki sağlam satırları koru, yalnız eksik/HATA olanları sor")
+    ap.add_argument("--idler", type=Path, help="id listesini dosyadaki sırayla seç; -n yok sayılır")
+    ap.add_argument("--decompile", type=Path, help="id/decompile alanlarını taşıyan Ghidra JSONL çıktısı")
+    ap.add_argument("--girdi", choices=("asm", "decompile", "ikisi"), default="asm",
+                    help="modele assembly, decompile veya ikisini ver (varsayılan: asm)")
+    ap.add_argument("--kuru", action="store_true", help="istek ve dosya yazımı yapma; girdi token tahminini yaz")
+    ap.add_argument("--kesik-de", action="store_true", help="--devam ile: tavana çarpıp boş kalanları da yeniden sor")
+    ap.add_argument("--kismi", action="store_true",
+                    help="satırlara sözcük düzeyinde precision (p) ve recall (r) ekle, ortalamalarını raporla")
+    ap.add_argument("--esanlam", action="store_true",
+                    help="--kismi ile: get/fetch/read gibi eş anlamlıları birleştirerek p_es, r_es, f1_es de yaz")
+    ap.add_argument("--oneksiz", action="store_true",
+                    help="gerçek ad F1'inin yanına öneksiz F1'i de (ozet.py tanımı) yaz ve raporla")
+    a = ap.parse_args()
+    if a.girdi != "asm" and a.decompile is None:
+        ap.error(f"--girdi {a.girdi} için --decompile gerekli")
+    if a.girdi == "decompile" and (a.baglam or a.baglam_derin):
+        ap.error("--baglam/--baglam-derin yalnız asm içeren girdilerde kullanılabilir")
+    if a.oneksiz:
+        from ozet import f1_oneksiz  # ozet taban'ı içe aktarır; döngü olmasın diye burada
+
+    satirlar = [json.loads(l) for l in a.veri.open()]
+    if a.idler:
+        ornek = idlerle_sec(satirlar, a.idler)
+    else:
+        random.Random(a.tohum).shuffle(satirlar)
+        ornek = satirlar[: a.n]
+
+    istenen_sayi = len(ornek)
+    decompile = decompile_oku(a.decompile) if a.decompile else {}
+    if a.girdi != "asm":
+        eksik = [r["id"] for r in ornek if r["id"] not in decompile]
+        if eksik:
+            print(f"decompile yok: {len(eksik)}/{len(ornek)} satır atlandı", file=sys.stderr)
+        ornek = [r for r in ornek if r["id"] in decompile]
+        if not ornek:
+            raise SystemExit("seçilen satırların hiçbirinde decompile yok")
+
+    baglam_eki = "-baglam2" if a.baglam_derin else "-baglam" if a.baglam else ""
+    girdi_eki = f"-{a.girdi}" if a.girdi != "asm" else ""
+    veri_adi = f"{a.veri.stem}{istenen_sayi}" if a.idler else a.veri.stem
+    sonuc = Path("sonuc") / f"{veri_adi}-{a.model}{'-dusunme' if a.dusunme else ''}{baglam_eki}{girdi_eki}.jsonl"
+    if a.kuru:
+        sistem = sistem_istemi(a.girdi, a.baglam or a.baglam_derin)
+        toplam = sum(token_tahmini(sistem) + token_tahmini(model_girdisi(
+                         r, a.baglam, a.baglam_derin, a.girdi, decompile.get(r["id"])))
+                     for r in ornek)
+        print(f"kuru: {len(ornek)} satır; tahmini toplam girdi tokenı (model başına): {toplam:,}")
+        print(f"çıktı yolu → {sonuc}")
+        return
+    sonuc.parent.mkdir(exist_ok=True)
+    eski = {}
+    if a.devam and sonuc.exists():
+        for l in sonuc.open():
+            r = json.loads(l)
+            hatali = str(r.get("aciklama", "")).startswith("HATA")
+            kesik = not r.get("tahmin") and (r.get("bitis") == "length" or r.get("bitis") is None)
+            if not hatali and not (a.kesik_de and kesik):
+                eski[r["id"]] = r
+    sorulacak = [r for r in ornek if r["id"] not in eski]
+    print(f"{len(eski)} satır korundu, {len(sorulacak)} soruluyor", file=sys.stderr)
+
+    def satir(r, c):
+        s = f1(str(c.get("ad", "")), r["ad"])
+        return {"id": r["id"], "gercek": r["ad"], "tahmin": c.get("ad"), "aciklama": c.get("aciklama"),
+                "f1": round(s, 3), "opt": r["opt"], "token": c.get("token", 0), "bitis": c.get("bitis")}
+
+    def iki_f1(r):
+        r = {**r, "f1_oneksiz": round(f1_oneksiz(r), 3)} if a.oneksiz else r
+        if a.kismi or a.esanlam:
+            tahmin = str(r.get("tahmin") or "")
+            p, rc = kelime_pr(tahmin, r["gercek"])
+            r = {**r, "p": round(p, 3), "r": round(rc, 3)}
+            if a.esanlam:
+                p, rc = kelime_pr(tahmin, r["gercek"], esanlam=True)
+                r = {**r, "p_es": round(p, 3), "r_es": round(rc, 3), "f1_es": round(harmonik(p, rc), 3)}
+        return r
+
+    # Satırlar geldikçe ara dosyaya yazılır; koşu yarıda kesilse de --devam kaldığı yerden alır.
+    ara = sonuc.with_suffix(".ara")
+    yeni = {}
+    if ara.exists():
+        yeni = {r["id"]: r for r in map(json.loads, ara.open()) if not str(r.get("aciklama", "")).startswith("HATA")}
+        sorulacak = [r for r in sorulacak if r["id"] not in yeni]
+    with ThreadPoolExecutor(a.j) as havuz, ara.open("a") as f:
+        baglamli = a.baglam or a.baglam_derin
+        isler = {}
+        for r in sorulacak:
+            girdi = model_girdisi(r, a.baglam, a.baglam_derin, a.girdi, decompile.get(r["id"]))
+            ek = () if a.girdi == "asm" else (a.girdi,)
+            isler[havuz.submit(sor, a.model, girdi, a.dusunme, a.tavan, baglamli, *ek)] = r
+        kosu_token = 0
+        tamamlanan = 0
+        for gelen in as_completed(isler):
+            r = isler[gelen]
+            yeni[r["id"]] = satir(r, gelen.result())
+            kosu_token += yeni[r["id"]].get("token", 0)
+            tamamlanan += 1
+            f.write(json.dumps(yeni[r["id"]], ensure_ascii=False) + "\n")
+            f.flush()
+            if tamamlanan % 200 == 0:
+                print(f"token: {kosu_token:,} ({tamamlanan}/{len(sorulacak)} yeni satır)", file=sys.stderr)
+
+    hepsi = [iki_f1(eski.get(r["id"]) or yeni[r["id"]]) for r in ornek]
+    with sonuc.open("w") as f:
+        for r in hepsi:
+            f.write(json.dumps(r, ensure_ascii=False) + "\n")
+    ara.unlink(missing_ok=True)
+    skorlar, oneksiz = {}, {}
+    for r in hepsi:
+        skorlar.setdefault(r["opt"], []).append(r["f1"])
+        oneksiz.setdefault(r["opt"], []).append(r.get("f1_oneksiz", 0.0))
+        print(f"{r['f1']:.2f}  {r['opt']}  {r['gercek']:<28} ← {r['tahmin']}")
+    for opt, l in sorted(skorlar.items()):
+        print(f"{opt}: ortalama F1 {sum(l) / len(l):.2f}  (n={len(l)}, tam isabet {sum(x == 1 for x in l)})")
+        if a.oneksiz:
+            o = oneksiz[opt]
+            print(f"{opt}: öneksiz F1 {sum(o) / len(o):.2f}  (tam isabet {sum(x == 1 for x in o)})")
+        grup = [r for r in hepsi if r["opt"] == opt]
+        ort = lambda alan: sum(r[alan] for r in grup) / len(grup)
+        if a.kismi or a.esanlam:
+            print(f"{opt}: precision {ort('p'):.2f}  recall {ort('r'):.2f}")
+        if a.esanlam:
+            print(f"{opt}: eş anlamlı  precision {ort('p_es'):.2f}  recall {ort('r_es'):.2f}  F1 {ort('f1_es'):.2f}")
+    print(f"yeni token: {sum(r.get('token', 0) for r in yeni.values()):,}")
+    print(f"toplam token: {sum(r.get('token', 0) for r in hepsi):,}")
+    print(f"ayrıntı → {sonuc}")
+
+
+if __name__ == "__main__":
+    main()

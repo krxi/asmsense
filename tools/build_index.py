@@ -46,6 +46,11 @@ LICENSE_EN = {
 TOKEN_RE = re.compile(r"[A-Z]+(?=[A-Z][a-z])|[A-Z]?[a-z]+|[A-Z]+|\d+")
 
 
+def context_en(s: str) -> str:
+    """The call context is stored with two Turkish words: "(N komut)" and "çağırır" (calls)."""
+    return re.sub(r"\((\d+) komut\)", r"(\1 insns)", s).replace(": çağırır ", ": calls ")
+
+
 def fnv1a32(s: str) -> int:
     h = 0x811C9DC5
     for b in s.encode("utf-8"):
@@ -137,7 +142,7 @@ def main() -> None:
                 "license": lic_idx[lic],
                 "asm": "\n".join(body[:ASM_LINES]),
                 "asm_lines": len(body),
-                "context": (d.get("baglam") or "")[:CONTEXT_CHARS],
+                "context": context_en(d.get("baglam") or "")[:CONTEXT_CHARS],
             }
             if d["id"] in v6:
                 rec["v6"] = v6[d["id"]]
