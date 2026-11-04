@@ -47,13 +47,15 @@ def etiketleri_yukle(aciklama_yolu: Path, detay_yolu: Path) -> list[dict]:
         if detay["anahtar"] not in turkce:
             continue
         anahtar = detay["anahtar"]
-        birlesik.append({
-            "anahtar": anahtar,
-            "proje": anahtar.split("/", 1)[0],
-            "aciklama": turkce[anahtar].get("aciklama", ""),
-            **{alan: detay.get(alan, "") for alan in ALANLAR if alan != "aciklama"},
-            "ogretmen_model": detay.get("model") or turkce[anahtar].get("model") or "bilinmiyor",
-        })
+        birlesik.append(
+            {
+                "anahtar": anahtar,
+                "proje": anahtar.split("/", 1)[0],
+                "aciklama": turkce[anahtar].get("aciklama", ""),
+                **{alan: detay.get(alan, "") for alan in ALANLAR if alan != "aciklama"},
+                "ogretmen_model": detay.get("model") or turkce[anahtar].get("model") or "bilinmiyor",
+            }
+        )
     return birlesik
 
 
@@ -72,7 +74,7 @@ def _kategori_katmanli_sec(kayitlar: list[dict], n: int, rng: random.Random) -> 
     secilen = []
     for kategori in kategoriler:
         rng.shuffle(kovalar[kategori])
-        secilen.extend(kovalar[kategori][:kotalar[kategori]])
+        secilen.extend(kovalar[kategori][: kotalar[kategori]])
     rng.shuffle(secilen)
     return secilen
 
@@ -141,15 +143,17 @@ def kaynak_kisalt(kaynak: str, anahtar: str, tavan: int = 6000) -> tuple[str, in
         parca = (on + parca + arka)[:karakter]
     else:
         yarim = karakter // 2
-        parca = kaynak[:yarim] + isaret + kaynak[-(karakter - yarim):]
+        parca = kaynak[:yarim] + isaret + kaynak[-(karakter - yarim) :]
         return parca, token, True
     return parca + isaret, token, True
 
 
 def istem_hazirla(r: dict, kaynak: str) -> str:
     etiketler = {alan: r.get(alan, "") for alan in ALANLAR}
-    return (f"ANAHTAR: {r['anahtar']}\n\nC KAYNAĞI:\n```c\n{kaynak}\n```\n\n"
-            f"ÖĞRETMEN ETİKETLERİ:\n{json.dumps(etiketler, ensure_ascii=False, indent=2)}")
+    return (
+        f"ANAHTAR: {r['anahtar']}\n\nC KAYNAĞI:\n```c\n{kaynak}\n```\n\n"
+        f"ÖĞRETMEN ETİKETLERİ:\n{json.dumps(etiketler, ensure_ascii=False, indent=2)}"
+    )
 
 
 def hakem_sonucunu_ayristir(metin: str) -> dict:
@@ -184,8 +188,7 @@ def hakem_sonucunu_ayristir(metin: str) -> dict:
     uyum = str(uyum or "").strip().lower().replace("hayir", "hayır")
     if uyum not in ("evet", "hayır"):
         raise ValueError("aciklama_uyumu evet/hayır değil")
-    return {"puanlar": sonuc, "aciklama_uyumu": uyum,
-            "gerekce": str(nesne.get("gerekce", "")).strip()[:1000]}
+    return {"puanlar": sonuc, "aciklama_uyumu": uyum, "gerekce": str(nesne.get("gerekce", "")).strip()[:1000]}
 
 
 def hakeme_sor(model: str, istem: str, deneme_sayisi: int = 3) -> dict:
@@ -193,8 +196,9 @@ def hakeme_sor(model: str, istem: str, deneme_sayisi: int = 3) -> dict:
     son_hata = None
     for _ in range(deneme_sayisi):
         try:
-            yanit = evren_istek(model, [{"role": "system", "content": SISTEM},
-                                         {"role": "user", "content": istem}], max_tokens=700)
+            yanit = evren_istek(
+                model, [{"role": "system", "content": SISTEM}, {"role": "user", "content": istem}], max_tokens=700
+            )
             token += int(yanit.get("usage", {}).get("total_tokens", 0))
             secim = yanit["choices"][0]
             sonuc = hakem_sonucunu_ayristir(secim["message"].get("content") or "")
@@ -218,7 +222,7 @@ def bootstrap_araligi(degerler: list[int], tohum: int = 42, tekrar: int = 1000) 
     rng = random.Random(tohum)
     n = len(degerler)
     ortalamalar = sorted(sum(rng.choice(degerler) for _ in range(n)) / n for _ in range(tekrar))
-    return ortalamalar[int(tekrar * .025)], ortalamalar[min(tekrar - 1, int(tekrar * .975))]
+    return ortalamalar[int(tekrar * 0.025)], ortalamalar[min(tekrar - 1, int(tekrar * 0.975))]
 
 
 def _tum_puanlar(r: dict) -> list[int]:
@@ -232,8 +236,9 @@ def _kirlim(satirlar: list[dict], alan: str) -> list[str]:
     cikti = ["| grup | n | ortalama puan | 0 oranı |", "|---|---:|---:|---:|"]
     for ad, grup in sorted(gruplar.items(), key=lambda x: (-len(x[1]), x[0])):
         puanlar = [p for r in grup for p in _tum_puanlar(r)]
-        cikti.append(f"| {md(ad)} | {len(grup)} | {sum(puanlar) / len(puanlar):.3f} | "
-                     f"{_yuzde(puanlar.count(0), len(puanlar))} |")
+        cikti.append(
+            f"| {md(ad)} | {len(grup)} | {sum(puanlar) / len(puanlar):.3f} | {_yuzde(puanlar.count(0), len(puanlar))} |"
+        )
     return cikti
 
 
@@ -253,41 +258,54 @@ def md(deger) -> str:
 
 
 def rapor_metni(satirlar: list[dict]) -> str:
-    saglam = [r for r in satirlar if isinstance(r.get("puanlar"), dict)
-              and all(r["puanlar"].get(a) in (0, 1, 2) for a in ALANLAR)]
-    metin = ["# Öğretmen Denetimi", "",
-             f"C kaynağına göre puanlanan örnek sayısı: **{len(saglam)}**. "
-             "Puanlar: 2 doğru, 1 kısmen doğru/genel, 0 yanlış.", "",
-             "## Alan puanları", "",
-             "| alan | n | 0 | 1 | 2 | ortalama | %95 bootstrap GA |",
-             "|---|---:|---:|---:|---:|---:|---:|"]
+    saglam = [
+        r
+        for r in satirlar
+        if isinstance(r.get("puanlar"), dict) and all(r["puanlar"].get(a) in (0, 1, 2) for a in ALANLAR)
+    ]
+    metin = [
+        "# Öğretmen Denetimi",
+        "",
+        f"C kaynağına göre puanlanan örnek sayısı: **{len(saglam)}**. "
+        "Puanlar: 2 doğru, 1 kısmen doğru/genel, 0 yanlış.",
+        "",
+        "## Alan puanları",
+        "",
+        "| alan | n | 0 | 1 | 2 | ortalama | %95 bootstrap GA |",
+        "|---|---:|---:|---:|---:|---:|---:|",
+    ]
     for i, alan in enumerate(ALANLAR):
         puanlar = [r["puanlar"][alan] for r in saglam]
         alt, ust = bootstrap_araligi(puanlar, 42 + i)
         n = len(puanlar)
         ort = sum(puanlar) / n if n else 0
-        metin.append(f"| {alan} | {n} | {_yuzde(puanlar.count(0), n)} | {_yuzde(puanlar.count(1), n)} | "
-                     f"{_yuzde(puanlar.count(2), n)} | {ort:.3f} | [{alt:.3f}, {ust:.3f}] |")
+        metin.append(
+            f"| {alan} | {n} | {_yuzde(puanlar.count(0), n)} | {_yuzde(puanlar.count(1), n)} | "
+            f"{_yuzde(puanlar.count(2), n)} | {ort:.3f} | [{alt:.3f}, {ust:.3f}] |"
+        )
     uyum = Counter(r.get("aciklama_uyumu") for r in saglam)
-    metin += ["", "## Türkçe–İngilizce açıklama uyumu", "",
-              f"Evet: **{uyum['evet']}** ({_yuzde(uyum['evet'], len(saglam))}); "
-              f"hayır: **{uyum['hayır']}** ({_yuzde(uyum['hayır'], len(saglam))})."]
-    for baslik, alan in (("Proje kırılımı", "proje"), ("Kategori kırılımı", "kategori"),
-                         ("Öğretmen model kırılımı", "ogretmen_model")):
+    metin += [
+        "",
+        "## Türkçe–İngilizce açıklama uyumu",
+        "",
+        f"Evet: **{uyum['evet']}** ({_yuzde(uyum['evet'], len(saglam))}); "
+        f"hayır: **{uyum['hayır']}** ({_yuzde(uyum['hayır'], len(saglam))}).",
+    ]
+    for baslik, alan in (
+        ("Proje kırılımı", "proje"),
+        ("Kategori kırılımı", "kategori"),
+        ("Öğretmen model kırılımı", "ogretmen_model"),
+    ):
         metin += ["", f"## {baslik}", "", *_kirlim(saglam, alan)]
     uzunluklu = [{**r, "kaynak_dilimi": kaynak_dilimi(r)} for r in saglam]
     metin += ["", "## Kaynak uzunluğu kırılımı", "", *_kirlim(uzunluklu, "kaynak_dilimi")]
-    sifirlar = sorted((r for r in saglam if 0 in _tum_puanlar(r)),
-                      key=lambda r: (-_tum_puanlar(r).count(0), r["anahtar"]))[:15]
-    metin += ["", "## 0 puanlı 15 somut örnek", "",
-              "| anahtar | 0 alanlar | öğretmen etiketi | kısa gerekçe |",
-              "|---|---|---|---|"]
-    for r in sifirlar:
-        alanlar = [a for a in ALANLAR if r["puanlar"][a] == 0]
-        etiket = "; ".join(f"{a}={str(r.get('etiketler', {}).get(a, ''))[:100]}" for a in alanlar)
-        metin.append(f"| {md(r['anahtar'])} | {', '.join(alanlar)} | {md(etiket)} | {md(r.get('gerekce', ''))} |")
-    if not sifirlar:
-        metin.append("| — | — | 0 puanlı örnek yok | — |")
+    metin += [
+        "",
+        "## Yayın sınırı",
+        "",
+        "Satır düzeyinde işlev kimliği, gerçek ad, öğretmen etiketi veya gerekçe yayımlanmaz.",
+        "Bu rapor yalnız toplulaştırılmış puan dağılımlarını, kapsamı ve bootstrap aralıklarını içerir.",
+    ]
     return "\n".join(metin) + "\n"
 
 
@@ -307,8 +325,7 @@ def main() -> None:
     ap.add_argument("--rapor", action="store_true", help="rapor/OGRETMEN_DENETIM.md dosyasını üret")
     a = ap.parse_args()
 
-    kayitlar = etiketleri_yukle(Path("veri/aciklama-v4/codex.jsonl"),
-                                Path("veri/aciklama-v4/codex-detay.jsonl"))
+    kayitlar = etiketleri_yukle(Path("veri/aciklama-v4/codex.jsonl"), Path("veri/aciklama-v4/codex-detay.jsonl"))
     secilen, tavan = ornekle(kayitlar, a.n, a.tohum)
     kaynaklar = kaynaklari_yukle(Path("veri/kaynak-v4"), {r["anahtar"] for r in secilen})
     eksik = [r["anahtar"] for r in secilen if r["anahtar"] not in kaynaklar]
@@ -342,16 +359,21 @@ def main() -> None:
     yeni = {}
     kosu_token = 0
     with ThreadPoolExecutor(a.j) as havuz, sonuc_yolu.open("a") as f:
-        isler = {havuz.submit(hakeme_sor, a.model, istem): (r, kaynak_token, kesildi)
-                 for r, istem, kaynak_token, kesildi in sorulacak}
+        isler = {
+            havuz.submit(hakeme_sor, a.model, istem): (r, kaynak_token, kesildi)
+            for r, istem, kaynak_token, kesildi in sorulacak
+        }
         for no, gelen in enumerate(as_completed(isler), 1):
             r, kaynak_token, kesildi = isler[gelen]
             cevap = gelen.result()
             satir = {
-                "anahtar": r["anahtar"], "proje": r["proje"], "kategori": r.get("kategori"),
+                "anahtar": r["anahtar"],
+                "proje": r["proje"],
+                "kategori": r.get("kategori"),
                 "ogretmen_model": r.get("ogretmen_model"),
                 "etiketler": {alan: r.get(alan, "") for alan in ALANLAR},
-                "kaynak_token_tahmini": kaynak_token, "kaynak_kesildi": kesildi,
+                "kaynak_token_tahmini": kaynak_token,
+                "kaynak_kesildi": kesildi,
                 **cevap,
             }
             yeni[r["anahtar"]] = satir

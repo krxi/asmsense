@@ -5,7 +5,7 @@
 - Benzersiz tahmin: 106 / 115 (%92)
 - Tahmin eğitimdeki bir adın birebir kopyası: 43 (%37); bunlarda F1 0.166, diğerlerinde 0.149
 - Gerçek ad eğitimde de geçiyor (vendored/ortak ad): 4 satır
-- En sık 10 tahmin: `json_dump` ×2, `json_parse` ×2, `parse_int` ×2, `bfind` ×2, `parse_digits` ×2, `mz_stream_tell` ×2, `hash_init` ×2, `trex` ×2, `file_read` ×2, `emitter_emit_scalar` ×1
+- Yayın sınırı: tekil tahmin adları yayımlanmaz; aşağıdaki tablolar yalnız toplulaştırılmış kırılımları içerir.
 
 ### String sabiti
 

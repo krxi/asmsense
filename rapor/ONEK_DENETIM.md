@@ -19,7 +19,7 @@ v4 verisi (`veri/bin/olcek/`) bu girdide yok; 341 projenin tamamı için `python
 
 Tabloda olmayan 2 projede iki kural da önek bulmuyor.
 
-## Örnekler (gerçek ad → siklik kuralıyla hedef)
+## Yayın sınırı
 
-- **sajs** (26/60): `eat_elem_first` → `elem_first`, `eat_elem_next` → `elem_next`, `eat_elem_sep` → `elem_sep`, `eat_false` → `false`, `eat_literal` → `literal`, `eat_mem_name_first` → `mem_name_first`
-- **picomatch** (7/22): `emit_arg` → `arg`, `emit_branch_end` → `branch_end`, `emit_exact` → `exact`, `emit_op` → `op`, `emit_quantifier` → `quantifier`, `emit_range_quantifier` → `range_quantifier`
+Satır düzeyinde fonksiyon adı/hedef örnekleri yayımlanmaz. Bu rapor yalnız
+ölçüm kapsamını, toplulaştırılmış sayıları ve yeniden üretim komutunu tutar.

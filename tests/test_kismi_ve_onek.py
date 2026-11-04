@@ -82,20 +82,22 @@ def test_taban_kismi_ve_esanlam(ornek_kok, monkeypatch, capsys):
 
 def test_onek_denetimi_yanlis_kirpmalari_bulur(tmp_path):
     satirlar = (
-        [{"proje": "sajs", "ad": f"eat_x{i}"} for i in range(6)]
-        + [{"proje": "sajs", "ad": "x0"}, {"proje": "sajs", "ad": "parse"}]
-        + [{"proje": "cyaml", "ad": f"cyaml_f{i}"} for i in range(6)]
+        [{"proje": "sample_project", "ad": f"widget_x{i}"} for i in range(6)]
+        + [{"proje": "sample_project", "ad": "x0"}, {"proje": "sample_project", "ad": "parse"}]
+        + [{"proje": "alpha_project", "ad": f"alpha_f{i}"} for i in range(6)]
     )
     d = tmp_path / "v.jsonl"
     d.write_text("".join(json.dumps(r) + "\n" for r in satirlar))
     sonuc = {s["proje"]: s for s in onek_denetim.denetle(onek_denetim.oku([d]))}
-    assert sonuc["sajs"]["siklik"] == ["eat"] and sonuc["sajs"]["proje_kurali"] == []
-    assert len(sonuc["sajs"]["yanlis"]) == 6
-    assert sonuc["sajs"]["cakisma"] == [("eat_x0", "x0")]  # kırpınca eat_x0 → x0
-    assert sonuc["cyaml"]["yanlis"] == [] and sonuc["cyaml"]["proje_kurali"] == ["cyaml"]
+    assert sonuc["sample_project"]["siklik"] == ["widget"] and sonuc["sample_project"]["proje_kurali"] == []
+    assert len(sonuc["sample_project"]["yanlis"]) == 6
+    assert sonuc["sample_project"]["cakisma"] == [("widget_x0", "x0")]  # kırpınca widget_x0 → x0
+    assert sonuc["alpha_project"]["yanlis"] == [] and sonuc["alpha_project"]["proje_kurali"] == ["alpha"]
     md = onek_denetim.rapor(list(sonuc.values()), [d])
-    assert "| sajs | 8 | eat | - | 6 | 1 |" in md
-    assert "`eat_x0` → `x0`" in md
+    assert "| sample_project | 8 | widget | - | 6 | 1 |" in md
+    assert "## Yayın sınırı" in md
+    assert "## Örnekler" not in md
+    assert not any("→" in satir and "`" in satir for satir in md.splitlines())
 
 
 def test_onek_denetim_raporu_guncel(tmp_path):

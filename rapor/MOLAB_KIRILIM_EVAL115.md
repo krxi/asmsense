@@ -5,7 +5,7 @@
 - Benzersiz tahmin: 103 / 115 (%90)
 - Tahmin eğitimdeki bir adın birebir kopyası: 56 (%49); bunlarda F1 0.127, diğerlerinde 0.061
 - Gerçek ad eğitimde de geçiyor (vendored/ortak ad): 4 satır
-- En sık 10 tahmin: `rtmp_event_ping` ×4, `json_object_iter` ×2, `atoi` ×2, `string_rfind` ×2, `hash_iter` ×2, `json_init` ×2, `emit_byte` ×2, `cmp_write_bin` ×2, `vm_call` ×2, `read_file` ×2
+- Yayın sınırı: tekil tahmin adları yayımlanmaz; aşağıdaki tablolar yalnız toplulaştırılmış kırılımları içerir.
 
 ### String sabiti
 
