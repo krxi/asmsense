@@ -99,3 +99,28 @@ def test_msr_blens_ve_symgen_kaynaklari_dogrulandi():
     assert "excludes 20 common names" not in ana
     assert "twenty static-analysis-identifiable functions" in ana
     assert "binary-level split" in ana and "2.94\\times" in ana
+
+def test_benchmark_raporlari_satir_duzeyinde_ornek_yayinlamaz():
+    for yol in (KOK / "rapor/ONEK_DENETIM.md", KOK / "rapor/ONEK_DENETIM_V4.md"):
+        md = yol.read_text(encoding="utf-8")
+        assert "## Örnekler" not in md
+        assert not any("→" in satir and "`" in satir for satir in md.splitlines())
+
+
+def test_v6_pilot_belgesi_satir_duzeyinde_ornek_yayinlamaz():
+    md = (KOK / "lora/V6_DOGRULAMA.md").read_text(encoding="utf-8")
+    assert "→" not in md
+    assert "; ->" not in md
+    assert "95.000 train +" in md
+
+
+def test_readme_kopyalama_notu_ornek_etiketi_yayinlamaz():
+    for yol in (KOK / "README.md", KOK / "README.tr.md"):
+        satirlar = yol.read_text(encoding="utf-8").splitlines()
+        notlar = [
+            satir
+            for satir in satirlar
+            if "copying" in satir.lower() or "kopyalama" in satir.lower()
+        ]
+        assert notlar
+        assert all("`" not in satir for satir in notlar)
