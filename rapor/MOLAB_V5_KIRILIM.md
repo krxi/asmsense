@@ -5,7 +5,7 @@
 - Benzersiz tahmin: 1611 / 2000 (%81)
 - Tahmin eğitimdeki bir adın birebir kopyası: 594 (%30); bunlarda F1 0.141, diğerlerinde 0.116
 - Gerçek ad eğitimde de geçiyor (vendored/ortak ad): 270 satır
-- En sık 10 tahmin: `XXH3_128bits_withSecret` ×10, `crypto_auth_hmacsha256` ×9, `utf8_decode` ×9, `random_init` ×8, `json_parse` ×7, `hash_init` ×7, `sqlite3_finalize` ×7, `vector_size` ×6, `XXH3_128bits` ×6, `string_length` ×6
+- Yayın sınırı: tekil tahmin adları yayımlanmaz; aşağıdaki tablolar yalnız toplulaştırılmış kırılımları içerir.
 
 ### String sabiti
 
