@@ -95,7 +95,9 @@ def test_onek_denetimi_yanlis_kirpmalari_bulur(tmp_path):
     assert sonuc["alpha_project"]["yanlis"] == [] and sonuc["alpha_project"]["proje_kurali"] == ["alpha"]
     md = onek_denetim.rapor(list(sonuc.values()), [d])
     assert "| sample_project | 8 | widget | - | 6 | 1 |" in md
-    assert "`widget_x0` → `x0`" in md
+    assert "## Yayın sınırı" in md
+    assert "## Örnekler" not in md
+    assert not any("→" in satir and "`" in satir for satir in md.splitlines())
 
 
 def test_onek_denetim_raporu_guncel(tmp_path):
