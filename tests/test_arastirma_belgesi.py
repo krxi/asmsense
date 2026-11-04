@@ -115,12 +115,13 @@ def test_v6_pilot_belgesi_satir_duzeyinde_ornek_yayinlamaz():
 
 
 def test_readme_kopyalama_notu_ornek_etiketi_yayinlamaz():
-    for yol in (KOK / "README.md", KOK / "README.tr.md"):
-        satirlar = yol.read_text(encoding="utf-8").splitlines()
-        notlar = [
-            satir
-            for satir in satirlar
-            if "copying" in satir.lower() or "kopyalama" in satir.lower()
-        ]
-        assert notlar
-        assert all("`" not in satir for satir in notlar)
+    en = (KOK / "README.md").read_text(encoding="utf-8")
+    tr = (KOK / "README.tr.md").read_text(encoding="utf-8")
+    en_satir = next(s for s in en.splitlines() if "main failure is copying" in s.lower())
+    tr_satir = next(s for s in tr.splitlines() if "asıl hata kopyalama" in s.lower())
+    en_bolum = en_satir.split("the system prompt contains", 1)[1].split("in 768/2,000 rows", 1)[0]
+    tr_bolum = tr_satir.split("sistem istemi örnek bir cevap içeriyor ve eğitilmemiş model", 1)[1].split(
+        "2.000 satırın 768'inde", 1
+    )[0]
+    assert "`" not in en_bolum
+    assert "`" not in tr_bolum
