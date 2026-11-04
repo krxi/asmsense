@@ -104,7 +104,6 @@ def test_git_farki_aggregate_jsonl_kaydini_kabul_eder(tmp_path, monkeypatch):
     assert hatalar == []
 
 
-
 def test_assembly_ve_kaynak_alanlari_reddedilir():
     for alan in ("asm", "assembly", "source", "kaynak"):
         satir = '{"' + alan + '": "synthetic-value"}\n'
