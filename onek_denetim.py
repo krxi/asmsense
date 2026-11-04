@@ -127,7 +127,6 @@ def rapor(sonuc: list[dict], dosyalar: list[Path]) -> str:
         "",
         "Satır düzeyinde fonksiyon adı/hedef örnekleri yayımlanmaz. Bu rapor yalnız",
         "ölçüm kapsamını, toplulaştırılmış sayıları ve yeniden üretim komutunu tutar.",
-        "",
     ]
     return "\n".join(md) + "\n"
 
