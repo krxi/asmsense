@@ -118,7 +118,6 @@ def test_uzun_kaynak_hedef_fonksiyon_cevresinde_kesilir():
     assert od.token_tahmini(parca) <= 101
 
 
-
 def test_yayimlanmis_ogretmen_raporu_satir_duzeyinde_ornek_icermiyor():
     from pathlib import Path
 
