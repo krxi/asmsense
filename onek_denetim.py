@@ -5,13 +5,12 @@
   python3 onek_denetim.py veri/bin/olcek/*.jsonl -o rapor/ONEK_DENETIM_V4.md
 
 Üç kural karşılaştırılır:
-  siklik  hazirla_olcek.onekler varsayılanı: en sık "xxx_" başı (≥%30 ve ≥5 ad), proje adına bakmaz
+  siklik  hazirla_olcek.onekler varsayılanı: en sık "foo_" başı (≥%30 ve ≥5 ad), proje adına bakmaz
   proje   aynı eşik, ama önek proje adıyla ilişkili olmalı (--onek-kurali proje)
   ozet    ozet.onekler: README'deki öneksiz F1'in tanımı (yalnız veri/egitim ve veri/test)
 
-"Yanlış kırpma": siklik kuralının attığı ama proje kuralının atmadığı önek. Böyle bir adın eğitim
-hedefinden anlamlı bir sözcüğü (eat_, emit_, get_) silinir. "Çakışma": kırpma sonrası iki farklı
-adın aynı hedefe düşmesi (ör. eat_value ve value).
+"Yanlış kırpma": siklik kuralının attığı ama proje kuralının atmadığı önek. Böyle bir adın eğitim hedefinden anlamlı bir sözcük silinir. "Çakışma": kırpma sonrası iki farklı
+adın aynı hedefe düşmesi.
 """
 
 import argparse
@@ -78,7 +77,6 @@ def denetle(adlar: dict[str, set[str]]) -> list[dict]:
                 "siklik": sorted(s_onek),
                 "proje_kurali": sorted(p_onek),
                 "yanlis": yanlis,
-                "ornek": [(a, kirpilan[a]) for a in yanlis[:6]],
                 "cakisma": cakisma,
             }
         )
@@ -124,17 +122,14 @@ def rapor(sonuc: list[dict], dosyalar: list[Path]) -> str:
         )
     onksuz = sum(1 for s in sonuc if not (s["siklik"] or s["proje_kurali"]))
     md += ["", f"Tabloda olmayan {onksuz} projede iki kural da önek bulmuyor.", ""]
-    if etkilenen:
-        md += ["## Örnekler (gerçek ad → siklik kuralıyla hedef)", ""]
-        for s in sirali:
-            if s["yanlis"]:
-                ornek = ", ".join(f"`{a}` → `{k}`" for a, k in s["ornek"])
-                md.append(f"- **{s['proje']}** ({len(s['yanlis'])}/{s['ad']}): {ornek}")
-        cakisan = [(s["proje"], c) for s in sirali for c in s["cakisma"] if s["yanlis"]]
-        if cakisan:
-            md += ["", "## Çakışmalar (kırpma sonrası aynı hedef)", ""]
-            for p, c in cakisan[:20]:
-                md.append(f"- {p}: {' / '.join(f'`{a}`' for a in c)}")
+    md += [
+        "",
+        "## Yayın sınırı",
+        "",
+        "Satır düzeyinde fonksiyon adı/hedef örnekleri yayımlanmaz. Bu rapor yalnız",
+        "ölçüm kapsamını, toplulaştırılmış sayıları ve yeniden üretim komutunu tutar.",
+        "",
+    ]
     return "\n".join(md) + "\n"
 
 
