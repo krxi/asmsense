@@ -5,7 +5,7 @@
 - Benzersiz tahmin: 1536 / 2000 (%77)
 - Tahmin eğitimdeki bir adın birebir kopyası: 836 (%42); bunlarda F1 0.089, diğerlerinde 0.118
 - Gerçek ad eğitimde de geçiyor (vendored/ortak ad): 270 satır
-- En sık 10 tahmin: `BtreeCursor` ×13, `crypto_core_ed25519_scalar_sub` ×11, `free_expr` ×9, `crypto_core_ed25519_scalar_reduce` ×9, `http1_sse_on_close` ×9, `plutovg_path_add_ellipse` ×8, `http1_sse_on_open` ×7, `main` ×7, `runtime_http_on_request` ×7, `ecma_builtin_int16array_dispatch_construct` ×6
+- Yayın sınırı: tekil tahmin adları yayımlanmaz; aşağıdaki tablolar yalnız toplulaştırılmış kırılımları içerir.
 
 ### String sabiti
 
