@@ -127,3 +127,17 @@ def test_readme_kopyalama_notu_ornek_etiketi_yayinlamaz():
     )[0]
     assert "`" not in en_bolum
     assert "`" not in tr_bolum
+
+
+def test_model_kirilim_raporlari_tahmin_adi_yayinlamaz():
+    yollar = (
+        "rapor/MOLAB_KIRILIM.md",
+        "rapor/MOLAB_KIRILIM_EVAL115.md",
+        "rapor/MOLAB_V5_KIRILIM.md",
+        "rapor/MOLAB_V5_KIRILIM_EVAL115.md",
+    )
+    for goreli in yollar:
+        md = (KOK / goreli).read_text(encoding="utf-8")
+        assert "En sık 10 tahmin" not in md
+        assert "tekil tahmin adları yayımlanmaz" in md
+        assert not any("×" in satir and "`" in satir for satir in md.splitlines())
