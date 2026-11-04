@@ -12,6 +12,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import Optional
 
 KOK = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(KOK))
@@ -45,7 +46,7 @@ def sha256(veri: bytes) -> str:
     return hashlib.sha256(veri).hexdigest()
 
 
-def git_degeri(*argumanlar: str) -> str | None:
+def git_degeri(*argumanlar: str) -> Optional[str]:
     try:
         sonuc = subprocess.run(
             ["git", *argumanlar],
