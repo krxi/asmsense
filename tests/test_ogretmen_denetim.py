@@ -78,7 +78,7 @@ def test_bozuk_json_sahte_istekle_yeniden_sorulur(monkeypatch):
     assert cagrilar[0][0][1][0]["content"] == od.SISTEM
 
 
-def test_rapor_puan_bootstrap_kirim_ve_sifir_ornegi():
+def test_rapor_puan_bootstrap_kirim_ve_yayin_siniri():
     satirlar = []
     for no, (puan, model, kategori, token) in enumerate(
         [
@@ -103,7 +103,11 @@ def test_rapor_puan_bootstrap_kirim_ve_sifir_ornegi():
     assert "%95 bootstrap GA" in rapor
     assert "codex/gpt-5.6-luna" in rapor and "codex/gpt-5.6-sol" in rapor
     assert ">6K (kesildi)" in rapor
-    assert "p0/x.c:f" in rapor and "somut gerekçe" in rapor
+    assert "## Yayın sınırı" in rapor
+    assert "p0/x.c:f" not in rapor
+    assert "somut gerekçe" not in rapor
+    assert "etiket aciklama" not in rapor
+    assert "0 puanlı 15 somut örnek" not in rapor
 
 
 def test_uzun_kaynak_hedef_fonksiyon_cevresinde_kesilir():
@@ -112,3 +116,14 @@ def test_uzun_kaynak_hedef_fonksiyon_cevresinde_kesilir():
     assert kesildi and token > 100
     assert "hedef" in parca and "KESİLDİ" in parca
     assert od.token_tahmini(parca) <= 101
+
+
+
+def test_yayimlanmis_ogretmen_raporu_satir_duzeyinde_ornek_icermiyor():
+    from pathlib import Path
+
+    yol = Path(__file__).resolve().parents[1] / "rapor" / "OGRETMEN_DENETIM.md"
+    metin = yol.read_text(encoding="utf-8")
+    assert "## Yayın sınırı" in metin
+    assert "## 0 puanlı 15 somut örnek" not in metin
+    assert "| anahtar | 0 alanlar |" not in metin

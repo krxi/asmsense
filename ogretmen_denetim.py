@@ -277,17 +277,13 @@ def rapor_metni(satirlar: list[dict]) -> str:
         metin += ["", f"## {baslik}", "", *_kirlim(saglam, alan)]
     uzunluklu = [{**r, "kaynak_dilimi": kaynak_dilimi(r)} for r in saglam]
     metin += ["", "## Kaynak uzunluğu kırılımı", "", *_kirlim(uzunluklu, "kaynak_dilimi")]
-    sifirlar = sorted((r for r in saglam if 0 in _tum_puanlar(r)),
-                      key=lambda r: (-_tum_puanlar(r).count(0), r["anahtar"]))[:15]
-    metin += ["", "## 0 puanlı 15 somut örnek", "",
-              "| anahtar | 0 alanlar | öğretmen etiketi | kısa gerekçe |",
-              "|---|---|---|---|"]
-    for r in sifirlar:
-        alanlar = [a for a in ALANLAR if r["puanlar"][a] == 0]
-        etiket = "; ".join(f"{a}={str(r.get('etiketler', {}).get(a, ''))[:100]}" for a in alanlar)
-        metin.append(f"| {md(r['anahtar'])} | {', '.join(alanlar)} | {md(etiket)} | {md(r.get('gerekce', ''))} |")
-    if not sifirlar:
-        metin.append("| — | — | 0 puanlı örnek yok | — |")
+    metin += [
+        "",
+        "## Yayın sınırı",
+        "",
+        "Satır düzeyinde işlev kimliği, gerçek ad, öğretmen etiketi veya gerekçe yayımlanmaz.",
+        "Bu rapor yalnız toplulaştırılmış puan dağılımlarını, kapsamı ve bootstrap aralıklarını içerir.",
+    ]
     return "\n".join(metin) + "\n"
 
 
