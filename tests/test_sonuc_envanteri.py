@@ -14,15 +14,15 @@ def _depo(kok):
     sonuc = kok / "sonuc"
     sonuc.mkdir()
     (sonuc / "satir.jsonl").write_text(
-        '{"id":"synthetic-id","gercek":"synthetic-gold","tahmin":"synthetic-prediction"}\\n',
+        '{"id":"synthetic-id","gercek":"synthetic-gold","tahmin":"synthetic-prediction"}\n',
         encoding="utf-8",
     )
     (sonuc / "olcum.jsonl").write_text(
-        '{"adim":1,"eval_loss":0.4,"f1":0.2,"model":"synthetic","n":8}\\n',
+        '{"adim":1,"eval_loss":0.4,"f1":0.2,"model":"synthetic","n":8}\n',
         encoding="utf-8",
     )
-    (sonuc / "belirsiz.jsonl").write_text('{"not":"synthetic-value"}\\n', encoding="utf-8")
-    (sonuc / "bozuk.jsonl").write_text("not-json\\n", encoding="utf-8")
+    (sonuc / "belirsiz.jsonl").write_text('{"not":"synthetic-value"}\n', encoding="utf-8")
+    (sonuc / "bozuk.jsonl").write_text("not-json\n", encoding="utf-8")
     _git(kok, "add", ".")
     _git(kok, "commit", "-m", "synthetic inventory fixture")
     return subprocess.run(
@@ -55,7 +55,7 @@ def test_rapor_dosya_adi_ve_satir_degerlerini_yayimlamaz(tmp_path):
 def test_sonraki_satirdaki_satir_duzeyi_kayit_dosyayi_isaretler(tmp_path):
     _depo(tmp_path)
     yol = tmp_path / "sonuc" / "sonraki-satir.jsonl"
-    yol.write_text('{"n":1,"f1":0.2}\\n{"id":"synthetic-id"}\\n', encoding="utf-8")
+    yol.write_text('{"n":1,"f1":0.2}\n{"id":"synthetic-id"}\n', encoding="utf-8")
     _git(tmp_path, "add", ".")
     _git(tmp_path, "commit", "-m", "second-line fixture")
     ref = subprocess.run(
@@ -83,7 +83,7 @@ def test_toplu_envanter_strict_modda_gecer(tmp_path, monkeypatch, capsys):
     for yol in (tmp_path / "sonuc").glob("*.jsonl"):
         yol.unlink()
     (tmp_path / "sonuc" / "olcum.jsonl").write_text(
-        '{"adim":1,"eval_loss":0.4,"f1":0.2,"model":"synthetic","n":8}\\n',
+        '{"adim":1,"eval_loss":0.4,"f1":0.2,"model":"synthetic","n":8}\n',
         encoding="utf-8",
     )
     _git(tmp_path, "add", "-A")
