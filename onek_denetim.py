@@ -123,7 +123,6 @@ def rapor(sonuc: list[dict], dosyalar: list[Path]) -> str:
     onksuz = sum(1 for s in sonuc if not (s["siklik"] or s["proje_kurali"]))
     md += ["", f"Tabloda olmayan {onksuz} projede iki kural da önek bulmuyor.", ""]
     md += [
-        "",
         "## Yayın sınırı",
         "",
         "Satır düzeyinde fonksiyon adı/hedef örnekleri yayımlanmaz. Bu rapor yalnız",
