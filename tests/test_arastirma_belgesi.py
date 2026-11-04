@@ -100,10 +100,12 @@ def test_msr_blens_ve_symgen_kaynaklari_dogrulandi():
     assert "twenty static-analysis-identifiable functions" in ana
     assert "binary-level split" in ana and "2.94\\times" in ana
 
+
 def test_benchmark_raporlari_satir_duzeyinde_ornek_yayinlamaz():
     for yol in (KOK / "rapor/ONEK_DENETIM.md", KOK / "rapor/ONEK_DENETIM_V4.md"):
         md = yol.read_text(encoding="utf-8")
         assert "## Örnekler" not in md
+        assert "## Çakışmalar" not in md
         assert not any("→" in satir and "`" in satir for satir in md.splitlines())
 
 
