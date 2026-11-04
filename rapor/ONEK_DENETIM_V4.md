@@ -160,26 +160,3 @@ Tabloda olmayan 198 projede iki kural da önek bulmuyor.
 
 Satır düzeyinde fonksiyon adı, kaynak veya assembly örnekleri yayımlanmaz;
 bu rapor yalnız toplulaştırılmış denetim sonuçlarını tutar.
-
-## Çakışmalar (kırpma sonrası aynı hedef)
-
-- ttgo_twatch_library: `fs_close` / `lv_fs_close`
-- ttgo_twatch_library: `fs_dir_close` / `lv_fs_dir_close`
-- ttgo_twatch_library: `fs_dir_open` / `lv_fs_dir_open`
-- ttgo_twatch_library: `fs_dir_read` / `lv_fs_dir_read`
-- ttgo_twatch_library: `fs_open` / `lv_fs_open`
-- ttgo_twatch_library: `fs_read` / `lv_fs_read`
-- ttgo_twatch_library: `fs_remove` / `lv_fs_remove`
-- ttgo_twatch_library: `fs_rename` / `lv_fs_rename`
-- ttgo_twatch_library: `fs_seek` / `lv_fs_seek`
-- ttgo_twatch_library: `fs_size` / `lv_fs_size`
-- ttgo_twatch_library: `fs_tell` / `lv_fs_tell`
-- ttgo_twatch_library: `fs_trunc` / `lv_fs_trunc`
-- ttgo_twatch_library: `fs_write` / `lv_fs_write`
-- ttgo_twatch_library: `lv_theme_apply` / `theme_apply`
-- wasm3: `Call` / `op_Call`
-- wasm3: `Op_ContinueLoop` / `op_ContinueLoop`
-- wasm3: `XXH64_digest` / `Xxh64_Digest`
-- kha: `gc_major` / `hl_gc_major`
-- sqlcipher: `DictAddElement` / `Jim_DictAddElement`
-- sqlcipher: `JimCreateCommand` / `Jim_CreateCommand`
