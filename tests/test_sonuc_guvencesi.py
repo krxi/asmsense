@@ -92,9 +92,7 @@ def test_git_farki_aggregate_jsonl_kaydini_kabul_eder(tmp_path, monkeypatch):
     from sonuc_guvencesi import git_denetle
 
     taban = _git_repo(tmp_path)
-    (tmp_path / "sonuc" / "test-ozet.jsonl").write_text(
-        '{"n": 1, "f1": 0.2}\n', encoding="utf-8"
-    )
+    (tmp_path / "sonuc" / "test-ozet.jsonl").write_text('{"n": 1, "f1": 0.2}\n', encoding="utf-8")
     _git(tmp_path, "add", ".")
     _git(tmp_path, "commit", "-m", "aggregate fixture")
     bas = _git_sha(tmp_path)

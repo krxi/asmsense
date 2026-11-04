@@ -1,4 +1,5 @@
 """Yeni sonuç JSONL dosyalarında satır düzeyinde veri sızıntısını engeller."""
+
 from __future__ import annotations
 
 import argparse
@@ -15,11 +16,7 @@ SATIR_DUZEYI_ALANLARI = ("id", "gercek", "gercek_ad", "tahmin", "asm", "assembly
 def sonuc_jsonl_mi(yol: str) -> bool:
     """sonuc/ altındaki JSONL sonuç dosyalarını seçer."""
     parca = PurePosixPath(yol)
-    return (
-        len(parca.parts) >= 2
-        and parca.parts[0] == "sonuc"
-        and parca.suffix.lower() == ".jsonl"
-    )
+    return len(parca.parts) >= 2 and parca.parts[0] == "sonuc" and parca.suffix.lower() == ".jsonl"
 
 
 def jsonl_denetle(yol: str, icerik: str) -> list[str]:
@@ -40,9 +37,7 @@ def jsonl_denetle(yol: str, icerik: str) -> list[str]:
             hatalar.append(f"{yol}:{satir_no}: JSONL kaydı nesne olmalı.")
             continue
         if any(alan in kayit for alan in SATIR_DUZEYI_ALANLARI):
-            hatalar.append(
-                f"{yol}:{satir_no}: satır düzeyinde kimlik, ad, tahmin veya kaynak içeren sonuç yasak."
-            )
+            hatalar.append(f"{yol}:{satir_no}: satır düzeyinde kimlik, ad, tahmin veya kaynak içeren sonuç yasak.")
     return hatalar
 
 
