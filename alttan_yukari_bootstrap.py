@@ -7,6 +7,7 @@ import json
 import math
 import random
 import re
+import subprocess
 from pathlib import Path
 from typing import Dict, List, Mapping, Optional, Tuple
 
@@ -59,6 +60,30 @@ def beklenen_dogrulama_hashleri(kok: Optional[Path] = None) -> Dict[str, str]:
     except (KeyError, TypeError):
         raise ValueError("depo manifestleri gerekli validation girdilerini sabitlemiyor") from None
     return {ad: _hash_dogrula(deger, ad) for ad, deger in hashler.items()}
+
+
+
+def _audit_commit_dogrula(commit: str, kok: Optional[Path] = None) -> str:
+    kok = kok or KOK
+    if not isinstance(commit, str) or not re.fullmatch(r"[0-9a-f]{40}", commit):
+        raise ValueError("audit commit tam 40 karakterli küçük harfli SHA olmalı")
+    try:
+        cozum = subprocess.check_output(
+            ["git", "rev-parse", "--verify", commit + "^{commit}"],
+            cwd=kok,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
+        subprocess.run(
+            ["git", "cat-file", "-e", cozum + ":alttan_yukari_sim.py"],
+            cwd=kok,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        raise ValueError("audit commit depoda bulunmalı ve alttan_yukari_sim.py içermeli") from None
+    return cozum
 
 
 def _dayanak_dogrula(ozet: Mapping[str, object], beklenen: Mapping[str, str]) -> Dict[str, str]:
@@ -198,9 +223,11 @@ def esli_proje_bootstrap(
 def rapor_olustur(
     ozet_yolu: Path,
     ozet: Mapping[str, object],
+    audit_commit: str,
     tekrar: int = VARSAYILAN_TEKRAR,
     tohum: int = VARSAYILAN_TOHUM,
 ) -> Dict[str, object]:
+    audit_commit = _audit_commit_dogrula(audit_commit)
     beklenen = beklenen_dogrulama_hashleri()
     girdi_hashleri = _dayanak_dogrula(ozet, beklenen)
     degerler, toplam_satir = proje_degerleri(ozet)
@@ -217,6 +244,7 @@ def rapor_olustur(
         "confidence_level": 0.95,
         "n_projects": len(degerler),
         "n_rows": toplam_satir,
+        "audit_commit": audit_commit,
         "summary_sha256": sha256(ozet_yolu),
         "validation_inputs": girdi_hashleri,
         "comparisons": karsilastirmalar,
@@ -236,6 +264,7 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--ozet", required=True, type=Path, help="alttan_yukari_sim.py toplu çıktısı")
     parser.add_argument("--cikti", required=True, type=Path, help="depo dışında yeni toplu JSON yolu")
+    parser.add_argument("--audit-commit", required=True, help="alttan_yukari_sim.py çalıştırmasında kullanılan commit")
     parser.add_argument("--tekrar", type=int, default=VARSAYILAN_TEKRAR)
     parser.add_argument("--tohum", type=int, default=VARSAYILAN_TOHUM)
     args = parser.parse_args(argv)
@@ -248,7 +277,9 @@ def main(argv=None) -> int:
         if args.cikti.exists():
             raise FileExistsError("çıktı zaten var; üzerine yazılmayacak")
         ozet = _json_nesnesi(args.ozet, "Özet")
-        rapor = rapor_olustur(args.ozet, ozet, tekrar=args.tekrar, tohum=args.tohum)
+        rapor = rapor_olustur(
+            args.ozet, ozet, audit_commit=args.audit_commit, tekrar=args.tekrar, tohum=args.tohum
+        )
         args.cikti.parent.mkdir(parents=True, exist_ok=True)
         with args.cikti.open("x", encoding="utf-8") as akim:
             json.dump(rapor, akim, ensure_ascii=False, indent=2, allow_nan=False)
