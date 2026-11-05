@@ -62,7 +62,6 @@ def beklenen_dogrulama_hashleri(kok: Optional[Path] = None) -> Dict[str, str]:
     return {ad: _hash_dogrula(deger, ad) for ad, deger in hashler.items()}
 
 
-
 def _audit_commit_dogrula(commit: str, kok: Optional[Path] = None) -> str:
     kok = kok or KOK
     if not isinstance(commit, str) or not re.fullmatch(r"[0-9a-f]{40}", commit):
