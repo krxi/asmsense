@@ -36,14 +36,15 @@ Karşılaştırmalar:
 3. `v5_predicted - anonymised`: aynı yuvalara sabit v5 tahmin adları yazıldığında
    gerçekten görülen sözcüksel bilgi.
 4. `gold_prediction_coverage - v5_predicted`: aynı tahmin kapsamı sabitken
-   yanlış callee adlarının yol açtığı sözcüksel bilgi farkı.
+   gerçek callee adları ile v5 tahminleri arasındaki sözcüksel bilgi farkı.
 5. `gold - gold_prediction_coverage`: v5 için tahmin bulunmayan callee
    yuvalarının eksik kapsama nedeniyle kaybettirdiği ek sözcüksel bilgi.
 
 İkinci ve üçüncü karşılaştırmalar aynı callee yuvalarını kullandığı için
-dördüncü karşılaştırma kapsam farkını ad doğruluğu farkından ayırır. Bu
-karşılaştırmalar yine modelin yeniden adlandırma başarısına eşit değildir;
-yalnız bağlama eklenen hedef-token örtüşmesini ölçer.
+dördüncü karşılaştırma tahmin kapsamını sabit tutup gerçek adlarla tahminlerin
+token-recall farkını gösterir. Bu fark semantik ad doğruluğu değildir ve bu
+karşılaştırmalar modelin yeniden adlandırma başarısına eşit değildir; yalnız
+bağlama eklenen hedef-token örtüşmesini ölçer.
 
 ## Çalıştırma
 
