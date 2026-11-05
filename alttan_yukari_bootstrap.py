@@ -8,7 +8,7 @@ import math
 import random
 import re
 from pathlib import Path
-from typing import Dict, List, Mapping, Tuple
+from typing import Dict, List, Mapping, Optional, Tuple
 
 KOK = Path(__file__).resolve().parent
 VALIDATION_ROWS = 300
@@ -46,7 +46,8 @@ def _hash(value: object, label: str) -> str:
     return value
 
 
-def expected_validation_hashes(root: Path = KOK) -> Dict[str, str]:
+def expected_validation_hashes(root: Optional[Path] = None) -> Dict[str, str]:
+    root = root or KOK
     v6 = _json_object(root / "lora" / "v6_girdi_manifest.json", "v6")
     audit = _json_object(root / "rapor" / "arastirma" / "dogrulama_manifest.json", "validation")
     try:
@@ -220,7 +221,8 @@ def build_report(
     }
 
 
-def is_inside_repo(path: Path, root: Path = KOK) -> bool:
+def is_inside_repo(path: Path, root: Optional[Path] = None) -> bool:
+    root = root or KOK
     try:
         path.resolve().relative_to(root.resolve())
     except ValueError:
