@@ -29,8 +29,10 @@ Araç yalnız şu dosyaları yazar:
 - `../asmsense-validation/validation-v4.jsonl`
 - `../asmsense-validation/manifest.json` (toplu sayaçlar ve SHA-256; satır verisi yok)
 
-Mevcut çıktı dizininin üzerine yazılmaz. Ağ, hash, satır sayısı veya arşiv üye
-kontrolü başarısızsa kısmi çıktı bırakılmaz. Dosyalar kaynak satırların lisans
+Linux ve macOS'ta staging dizini atomik no-replace rename ile yayımlanır; arada boş
+hedef dizin oluşturulsa bile üzerine yazılmaz. Bu işlemi desteklemeyen platformlarda
+araç fail-closed durur. Ağ, hash, satır sayısı veya arşiv üye kontrolü başarısızsa
+kısmi çıktı bırakılmaz. Dosyalar kaynak satırların lisans
 alanlarını korur; bunları depoya veya yeni eğitim/prompt örneklerine kopyalamayın.
 Lisanslar için `veri/LISANSLAR.md` geçerlidir.
 
