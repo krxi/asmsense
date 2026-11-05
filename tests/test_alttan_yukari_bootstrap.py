@@ -21,9 +21,27 @@ def yaz_json(yol, veri):
 
 def sentetik_ozet():
     proje_satirlari = {
-        "proje-a": {"rows": 200, "anonymised": 0.10, "gold": 0.50, "v5_predicted": 0.20},
-        "proje-b": {"rows": 50, "anonymised": 0.30, "gold": 0.70, "v5_predicted": 0.40},
-        "proje-c": {"rows": 50, "anonymised": 0.50, "gold": 0.60, "v5_predicted": 0.70},
+        "proje-a": {
+            "rows": 200,
+            "anonymised": 0.10,
+            "gold": 0.50,
+            "v5_predicted": 0.20,
+            "gold_prediction_coverage": 0.40,
+        },
+        "proje-b": {
+            "rows": 50,
+            "anonymised": 0.30,
+            "gold": 0.70,
+            "v5_predicted": 0.40,
+            "gold_prediction_coverage": 0.60,
+        },
+        "proje-c": {
+            "rows": 50,
+            "anonymised": 0.50,
+            "gold": 0.60,
+            "v5_predicted": 0.70,
+            "gold_prediction_coverage": 0.50,
+        },
     }
     projeler = {}
     kipler = {}
@@ -85,6 +103,11 @@ def test_proje_bootstrap_esli_ve_deterministik(tmp_path, monkeypatch):
     assert ilk["comparisons"]["v5_predicted_minus_anonymised_macro_token_recall"]["estimate"] == pytest.approx(
         0.116666667
     )
+    assert ilk["comparisons"]["coverage_matched_gold_minus_anonymised_macro_token_recall"]["estimate"] == 0.25
+    assert ilk["comparisons"]["coverage_matched_gold_minus_v5_predicted_macro_token_recall"]["estimate"] == pytest.approx(
+        0.133333333
+    )
+    assert ilk["comparisons"]["gold_minus_coverage_matched_gold_macro_token_recall"]["estimate"] == 0.10
     for sonuc in ilk["comparisons"].values():
         assert sonuc["n_projects"] == 3
         assert sonuc["n_rows"] == 300
@@ -123,6 +146,24 @@ def test_eslesmeyen_proje_kumeleri_reddedilir(tmp_path, monkeypatch):
     del ozet["projects"]["gold"]["proje-c"]
 
     with pytest.raises(ValueError, match="proje kümeleri farklı"):
+        bootstrap.rapor_olustur(ozet_yolu, ozet, audit_commit=audit_commit, tekrar=100)
+
+
+def test_kapsama_esli_altin_kipi_zorunludur(tmp_path, monkeypatch):
+    _, ozet_yolu, audit_commit = hazirla(tmp_path, monkeypatch)
+    ozet = json.loads(ozet_yolu.read_text(encoding="utf-8"))
+    del ozet["projects"]["gold_prediction_coverage"]
+
+    with pytest.raises(ValueError, match="gold_prediction_coverage"):
+        bootstrap.rapor_olustur(ozet_yolu, ozet, audit_commit=audit_commit, tekrar=100)
+
+
+def test_kapsama_esli_altin_satir_sayisi_eslesmelidir(tmp_path, monkeypatch):
+    _, ozet_yolu, audit_commit = hazirla(tmp_path, monkeypatch)
+    ozet = json.loads(ozet_yolu.read_text(encoding="utf-8"))
+    ozet["projects"]["gold_prediction_coverage"]["proje-b"]["rows"] = 49
+
+    with pytest.raises(ValueError, match="satır sayıları farklı"):
         bootstrap.rapor_olustur(ozet_yolu, ozet, audit_commit=audit_commit, tekrar=100)
 
 
