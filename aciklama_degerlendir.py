@@ -148,6 +148,76 @@ def kaynak_anahtari(kayit):
     return f"{kayit['proje']}/{kayit['dosya']}:{kayit['ad']}"
 
 
+def kaynak_kapsami_ozeti(veri_yolu, kaynak_yolu):
+    """Sabit valid300 kimliklerinin kaynak kataloğundaki kapsamını yalnız sayaçlarla denetle."""
+    sabit, _ = dg.dayanaklar()
+    veri = dg.jsonl_oku(veri_yolu)
+    dg.ham_dogrula(veri_yolu, veri, sabit)
+    try:
+        kimlik_kaynak = {kimlik: kaynak_anahtari(veri[kimlik]) for kimlik in sabit}
+    except KeyError:
+        raise ValueError("Sabit doğrulama kaydında kaynak anahtarı eksik") from None
+    beklenen = set(kimlik_kaynak.values())
+    if not beklenen or len(kimlik_kaynak) != len(sabit):
+        raise ValueError("Sabit doğrulama kaynak anahtarları geçersiz")
+    if not beklenen <= set(kimlik_kaynak.values()):
+        raise ValueError("Sabit doğrulama kaynak anahtarları tutarsız")
+
+    yol = Path(kaynak_yolu).expanduser()
+    dosyalar = sorted(p for p in yol.glob("*.jsonl") if p.is_file()) if yol.is_dir() else [yol]
+    if not dosyalar or any(not p.is_file() for p in dosyalar):
+        raise ValueError("Kaynak kataloğunda okunabilir JSONL bulunamadı")
+
+    bulunan = {}
+    dosya_ozetleri = []
+    kayit_sayisi = 0
+    for dosya in dosyalar:
+        ozet = hashlib.sha256()
+        with dosya.open("rb") as akim:
+            for no, satir in enumerate(akim, 1):
+                ozet.update(satir)
+                if not satir.strip():
+                    continue
+                try:
+                    kayit = json.loads(satir.decode("utf-8"))
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    raise ValueError(f"Kaynak kataloğu JSONL satırı {no}: geçersiz JSON/UTF-8") from None
+                if not isinstance(kayit, dict):
+                    raise ValueError(f"Kaynak kataloğu JSONL satırı {no}: nesne olmalı")
+                anahtar, kaynak = kayit.get("anahtar"), kayit.get("kaynak")
+                if not isinstance(anahtar, str) or not anahtar or not isinstance(kaynak, str):
+                    raise ValueError(f"Kaynak kataloğu JSONL satırı {no}: anahtar/kaynak eksik")
+                kayit_sayisi += 1
+                if anahtar not in beklenen or not kaynak.strip():
+                    continue
+                kaynak_sha = hashlib.sha256(kaynak.encode("utf-8")).digest()
+                if anahtar in bulunan and bulunan[anahtar] != kaynak_sha:
+                    raise ValueError("Validation kaynak anahtarı için çelişkili kaynak kayıtları")
+                bulunan[anahtar] = kaynak_sha
+        dosya_ozetleri.append(ozet.digest())
+
+    kimlik_bulunan = sum(anahtar in bulunan for anahtar in kimlik_kaynak.values())
+    kaynak_n = len(beklenen)
+    kaynak_bulunan = len(bulunan)
+    return {
+        "sema": 1,
+        "bolum": "valid300",
+        "kimlik_n": len(sabit),
+        "kimlik_kaynak_bulunan": kimlik_bulunan,
+        "kimlik_kaynak_eksik": len(sabit) - kimlik_bulunan,
+        "kimlik_kapsam_orani": kimlik_bulunan / len(sabit),
+        "benzersiz_kaynak_n": kaynak_n,
+        "kaynak_bulunan": kaynak_bulunan,
+        "kaynak_eksik": kaynak_n - kaynak_bulunan,
+        "kaynak_kapsam_orani": kaynak_bulunan / kaynak_n,
+        "katalog_dosya_sayisi": len(dosyalar),
+        "katalog_kayit_sayisi": kayit_sayisi,
+        "katalog_sha256": hashlib.sha256(b"".join(sorted(dosya_ozetleri))).hexdigest(),
+        "validation_sha256": dg.sha256(veri_yolu),
+        "iz": dg.git_izi(),
+    }
+
+
 def hedef_adini_maskeyle(kaynak, ad):
     """Hedef tanımlayıcısının tam yazımını kaynak paketinde nötrleştir."""
     if not isinstance(kaynak, str) or not isinstance(ad, str) or not re.fullmatch(r"[A-Za-z_]\w*", ad):
@@ -405,6 +475,10 @@ def main(argv=None):
     paket.add_argument("--kaynak", type=Path, required=True)
     paket.add_argument("--paket", type=Path, required=True)
     paket.add_argument("--anahtar", type=Path, help="varsayılan: repo dışındaki ../asmsense-ozel/")
+    kapsam = alt.add_parser("kaynak-kapsami")
+    kapsam.add_argument("--veri", type=Path, required=True)
+    kapsam.add_argument("--kaynak", type=Path, required=True, help="kaynak-kod.py çıktısı; dosya veya dizin")
+    kapsam.add_argument("-o", "--cikti", type=Path)
     deger = alt.add_parser("puanla")
     deger.add_argument("--paket", type=Path, required=True, help="değiştirilmemiş özgün kör paket")
     deger.add_argument("--anahtar", type=Path, required=True)
@@ -418,6 +492,8 @@ def main(argv=None):
             sonuc, secilen, girdiler = plan_hazirla(a.veri, a.tahmin, a.n, a.tohum)
             if a.komut == "paketle":
                 sonuc = {**sonuc, "paketleme": paketle(sonuc, secilen, girdiler, a.kaynak, a.paket, a.anahtar)}
+        elif a.komut == "kaynak-kapsami":
+            sonuc = kaynak_kapsami_ozeti(a.veri, a.kaynak)
         else:
             sonuc = puanla(a.anahtar, a.etiket, a.uzlasi, a.tohum, a.paket)
         metin = dg.json_metni(sonuc)
