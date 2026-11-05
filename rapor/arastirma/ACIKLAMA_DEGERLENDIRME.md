@@ -31,7 +31,9 @@ Puanlayıcı yalnız C kaynağı ve İngilizce açıklamayı görür. Hedef işl
 tam tanımlayıcı yazımı kodda, yorumlarda ve string/char sabitlerinde sabit nötr
 bir adla maskelenir; diğer tanımlayıcılar ve literal içeriğinin geri kalanı
 korunur. Sistem/tahmin/F1/özgün ID alanları gösterilmez. Hedef tanımlayıcı kodda
-bulunamazsa paket oluşturulmaz.
+bulunamazsa paket oluşturulmaz. C'nin ters eğik çizgi + satır sonu birleştirmesi
+sonrasında hedef yazımı hâlâ kalıyorsa (ör. bölünmüş tanımlayıcı/literal),
+araç kısmen körlenmiş paket üretmek yerine hata verir.
 Paket değiştirilmeyen özgün JSONL'dir. Yanında üretilen etiket şablonunun
 her satırı özgün **paket baytlarının SHA-256** değerini taşır. İki puanlayıcı
 bu şablonun ayrı kopyalarını doldurur; paketi düzenlemez. Kör anahtar da aynı
