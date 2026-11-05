@@ -133,20 +133,22 @@ def test_paket_kor_ayni_fonksiyonlar_ve_hash_bagi(girdiler, tmp_path):
     assert anahtar.stat().st_mode & 0o777 == 0o600
 
 
-def test_hedef_adi_kod_ve_yorumlarda_maskelenir_literal_korunur():
+def test_hedef_adi_kod_yorum_ve_literallerde_maskelenir():
     kaynak = (
         "/* synthetic_fn is documented */\n"
         "int synthetic_fn(int x) { // synthetic_fn self-call\n"
         '  const char *s = "synthetic_fn";\n'
         "  return x ? synthetic_fn(x - 1) : s[0];\n"
         "}\n"
+        "int synthetic_fn_helper(void);\n"
     )
     beklenen = (
         "/* __asmsense_target is documented */\n"
         "int __asmsense_target(int x) { // __asmsense_target self-call\n"
-        '  const char *s = "synthetic_fn";\n'
+        '  const char *s = "__asmsense_target";\n'
         "  return x ? __asmsense_target(x - 1) : s[0];\n"
         "}\n"
+        "int synthetic_fn_helper(void);\n"
     )
     assert ad.hedef_adini_maskeyle(kaynak, "synthetic_fn") == beklenen
 
