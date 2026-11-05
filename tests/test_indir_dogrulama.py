@@ -163,3 +163,34 @@ def test_indir_boyut_tavanini_asinca_durdurur(monkeypatch):
 
     with pytest.raises(ValueError, match="boyut sınırını"):
         ind.indir("https://example.invalid/data", 6)
+
+
+def test_kontrol_sirasinda_bos_hedef_olusturulursa_uzerine_yazilmaz(monkeypatch, tmp_path):
+    valid = b'{"id":"sentetik"}\n'
+    ham = b'{"id":"raw-sentetik"}\n'
+    arsiv = zip_yap({"valid_300.jsonl": valid})
+    sikistirilmis = gzip.compress(ham)
+    monkeypatch.setattr(ind, "KOK", tmp_path / "repo")
+    monkeypatch.setattr(ind, "V6_ARSIV_SHA256", sha(arsiv))
+    monkeypatch.setattr(ind, "V6_VALID_SHA256", sha(valid))
+    monkeypatch.setattr(ind, "V6_VALID_SATIR", 1)
+    monkeypatch.setattr(ind, "V4_HAM_SHA256", sha(ham))
+    monkeypatch.setattr(ind, "V4_SATIR", 1)
+    monkeypatch.setattr(ind, "indir", lambda url, _tavan: arsiv if url == ind.V6_URL else sikistirilmis)
+
+    asil_yayin = ind.atomik_yeniden_adlandir
+    hedef = tmp_path / "validation-artifacts"
+
+    def hedefi_kontrol_sonrasi_olustur(kaynak, hedef_yolu):
+        assert hedef_yolu == hedef
+        hedef_yolu.mkdir()
+        asil_yayin(kaynak, hedef_yolu)
+
+    monkeypatch.setattr(ind, "atomik_yeniden_adlandir", hedefi_kontrol_sonrasi_olustur)
+
+    with pytest.raises(FileExistsError):
+        ind.indir_dogrulama(hedef)
+
+    assert hedef.is_dir()
+    assert list(hedef.iterdir()) == []
+    assert list(tmp_path.glob(".validation-artifacts.*")) == []
