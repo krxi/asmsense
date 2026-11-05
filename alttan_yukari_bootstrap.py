@@ -76,6 +76,18 @@ def _audit_commit_dogrula(commit: str, kok: Optional[Path] = None) -> str:
             stderr=subprocess.DEVNULL,
             text=True,
         ).strip()
+        head = subprocess.check_output(
+            ["git", "rev-parse", "--verify", "HEAD^{commit}"],
+            cwd=kok,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
+        durum = subprocess.check_output(
+            ["git", "status", "--porcelain", "--untracked-files=no"],
+            cwd=kok,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
         subprocess.run(
             ["git", "cat-file", "-e", cozum + ":alttan_yukari_sim.py"],
             cwd=kok,
@@ -85,8 +97,11 @@ def _audit_commit_dogrula(commit: str, kok: Optional[Path] = None) -> str:
         )
     except (OSError, subprocess.CalledProcessError):
         raise ValueError("audit commit depoda bulunmalı ve alttan_yukari_sim.py içermeli") from None
+    if cozum != head:
+        raise ValueError("audit commit mevcut HEAD ile eşleşmeli")
+    if durum:
+        raise ValueError("audit için takipli çalışma ağacı temiz olmalı")
     return cozum
-
 
 def _dayanak_dogrula(ozet: Mapping[str, object], beklenen: Mapping[str, str]) -> Dict[str, str]:
     dayanak = ozet.get("provenance")
@@ -230,6 +245,13 @@ def rapor_olustur(
     tohum: int = VARSAYILAN_TOHUM,
 ) -> Dict[str, object]:
     audit_commit = _audit_commit_dogrula(audit_commit)
+    audit_tree = subprocess.check_output(
+        ["git", "rev-parse", "--verify", audit_commit + "^{tree}"],
+        cwd=KOK,
+        stderr=subprocess.DEVNULL,
+        text=True,
+    ).strip()
+    audit_simulator_sha256 = sha256(KOK / "alttan_yukari_sim.py")
     beklenen = beklenen_dogrulama_hashleri()
     girdi_hashleri = _dayanak_dogrula(ozet, beklenen)
     degerler, toplam_satir = proje_degerleri(ozet)
@@ -247,6 +269,9 @@ def rapor_olustur(
         "n_projects": len(degerler),
         "n_rows": toplam_satir,
         "audit_commit": audit_commit,
+        "audit_tree": audit_tree,
+        "audit_simulator_sha256": audit_simulator_sha256,
+        "audit_provenance": "clean_tracked_head_operator_attestation",
         "summary_sha256": sha256(ozet_yolu),
         "validation_inputs": girdi_hashleri,
         "comparisons": karsilastirmalar,
