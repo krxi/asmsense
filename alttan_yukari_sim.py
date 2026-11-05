@@ -295,13 +295,13 @@ def main():
     try:
         validate_validation_files(args.prompts, args.raw, args.predictions)
         rows = list(read_rows(args.prompts))
-        raw_rows = list(read_rows(args.raw))
         predictions = list(read_rows(args.predictions))
+        projects = {row["proje"] for row in rows}
+        raw_rows = [row for row in read_rows(args.raw) if row.get("proje") in projects]
         validate_validation_rows(rows, raw_rows, predictions)
     except (OSError, ValueError) as exc:
         parser.error(str(exc))
-    projects = {row["proje"] for row in rows}
-    raw = indexed(row for row in raw_rows if row.get("proje") in projects)
+    raw = indexed(raw_rows)
     summary, exports = simulate(rows, raw, predictions)
     summary["provenance"] = {
         "prompts_sha256": sha256(args.prompts),
