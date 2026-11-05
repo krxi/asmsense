@@ -58,9 +58,7 @@ python3 alttan_yukari_bootstrap.py \
   --cikti /tmp/bottom-up-bootstrap.json
 ```
 
-Varsayılanlar: 2.000 bootstrap tekrarı, seed 42. Komut bu değerleri açıkça sabitlemek isterse `--tekrar 2000 --tohum 42` ekleyin. Farklı bir yöntem önceden
-belirlenirse `--tekrar` ve `--tohum` açıkça verilebilir. Çıktı depo dışında
-olmalı ve mevcut dosyanın üzerine yazılmaz.
+`--audit-commit`, simülasyonu üreten commit'tir; araç commit'in geçerli olduğunu ve bu commit'te `alttan_yukari_sim.py` bulunduğunu doğrular. Rapor bu commit'i kaydeder. Varsayılanlar 2.000 tekrar ve seed 42'dir; komut bunları açıkça sabitler. Farklı bir yöntem önceden belirlenirse `--tekrar` ve `--tohum` değiştirilebilir. Çıktı depo dışında olmalı ve mevcut dosyanın üzerine yazılmaz.
 
 ## Güvenlik ve kapsam
 
