@@ -131,6 +131,20 @@ def test_var_olan_cikti_dizini_uzerine_yazilmaz(monkeypatch, tmp_path):
     assert (hedef / "keep.txt").read_text(encoding="utf-8") == "keep"
 
 
+def test_atomik_yayin_bos_hedef_dizinini_degistirmez(tmp_path):
+    kaynak = tmp_path / "staging"
+    kaynak.mkdir()
+    (kaynak / "new.txt").write_text("new", encoding="utf-8")
+    hedef = tmp_path / "hedef"
+    hedef.mkdir()
+
+    with pytest.raises(FileExistsError):
+        ind.atomik_yeniden_adlandir(kaynak, hedef)
+
+    assert list(hedef.iterdir()) == []
+    assert (kaynak / "new.txt").read_text(encoding="utf-8") == "new"
+
+
 def test_indir_boyut_tavanini_asinca_durdurur(monkeypatch):
     class Yanit:
         def __init__(self):
