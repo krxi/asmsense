@@ -26,9 +26,7 @@ V6_VALID_TAVAN = 16 * 1024 * 1024
 
 V4_REVIZYON = "6e1eb5e44c3114a06c0b4cac9b38540c33e322e0"
 V4_URL = (
-    "https://huggingface.co/datasets/krxi123/asmsense/resolve/"
-    + V4_REVIZYON
-    + "/data/v4/validation-00000.jsonl.gz"
+    "https://huggingface.co/datasets/krxi123/asmsense/resolve/" + V4_REVIZYON + "/data/v4/validation-00000.jsonl.gz"
 )
 V4_HAM_SHA256 = "7516244ec1798b05f6c3ef09fbfb4636241b5dd6bbfd8b6814ad340b6f1beef3"
 V4_SATIR = 19770
