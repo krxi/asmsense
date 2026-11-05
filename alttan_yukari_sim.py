@@ -257,7 +257,8 @@ def simulate(rows, raw, predictions):
             b["token_recall"] - a["token_recall"] for a, b in zip(diagnostics["anonymised"], diagnostics["gold"])
         ),
         "predicted_minus_anonymised_macro_recall": mean(
-            b["token_recall"] - a["token_recall"] for a, b in zip(diagnostics["anonymised"], diagnostics["v5_predicted"])
+            b["token_recall"] - a["token_recall"]
+            for a, b in zip(diagnostics["anonymised"], diagnostics["v5_predicted"])
         ),
     }
     summary = {
