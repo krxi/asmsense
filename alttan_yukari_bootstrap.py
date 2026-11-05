@@ -103,6 +103,7 @@ def _audit_commit_dogrula(commit: str, kok: Optional[Path] = None) -> str:
         raise ValueError("audit için takipli çalışma ağacı temiz olmalı")
     return cozum
 
+
 def _dayanak_dogrula(ozet: Mapping[str, object], beklenen: Mapping[str, str]) -> Dict[str, str]:
     dayanak = ozet.get("provenance")
     if not isinstance(dayanak, dict):
