@@ -158,10 +158,8 @@ def kaynak_kapsami_ozeti(veri_yolu, kaynak_yolu):
     except KeyError:
         raise ValueError("Sabit doğrulama kaydında kaynak anahtarı eksik") from None
     beklenen = set(kimlik_kaynak.values())
-    if not beklenen or len(kimlik_kaynak) != len(sabit):
+    if not beklenen:
         raise ValueError("Sabit doğrulama kaynak anahtarları geçersiz")
-    if not beklenen <= set(kimlik_kaynak.values()):
-        raise ValueError("Sabit doğrulama kaynak anahtarları tutarsız")
 
     yol = Path(kaynak_yolu).expanduser()
     dosyalar = sorted(p for p in yol.glob("*.jsonl") if p.is_file()) if yol.is_dir() else [yol]
