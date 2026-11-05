@@ -2,11 +2,11 @@
 
 ## Amaç
 
-`alttan_yukari_sim.py` aynı validation satırları için üç görünüm üretir:
-anonimleştirilmiş çağrı bağlamı, gerçek callee adlarıyla yeniden yazılmış bağlam
-ve sabit v5 callee tahminleriyle yeniden yazılmış bağlam. Bu yardımcı, mevcut
-aggregate özetteki iki eşli `macro_token_recall` farkı için proje-kümeli %95
-bootstrap aralığı hesaplar.
+`alttan_yukari_sim.py` aynı validation satırları için dört görünüm üretir:
+anonimleştirilmiş çağrı bağlamı, bütün çözümlenmiş callee'lerin gerçek adları,
+sabit v5 tahminlerinin bulunduğu callee yuvalarında gerçek adlar (`gold_prediction_coverage`)
+ve sabit v5 callee tahminleri. Bu yardımcı, aggregate özetteki beş eşli
+`macro_token_recall` karşılaştırması için proje-kümeli %95 bootstrap aralığı hesaplar.
 
 Bu değerler yalnız **lexical-information availability** ölçüsüdür. Modelin
 fonksiyon adı F1'ı, nedensel kazanım veya gerçek inference sonucu değildir.
@@ -17,25 +17,33 @@ fonksiyon adı F1'ı, nedensel kazanım veya gerçek inference sonucu değildir.
   tahminlerinin hash'lerini taşıyan `alttan_yukari_sim.py` aggregate özetidir.
 - Özetin `provenance` hash'leri `lora/v6_girdi_manifest.json` ve
   `rapor/arastirma/dogrulama_manifest.json` ile eşleşmelidir.
-- Özet, üç modda aynı proje kümesini ve proje başına aynı satır sayısını
+- Özet, dört modda aynı proje kümesini ve proje başına aynı satır sayısını
   taşımalıdır. Proje satırları toplamı 300 olmalıdır.
 - Yeniden örnekleme birimi projedir. Her tekrarda proje sayısı kadar proje
   yerine koyarak örneklenir; seçilen projenin bütün satırları birlikte kalır.
-- Her tekrarda aynı proje örneklemi iki karşılaştırmada da kullanılır. Böylece
-  farklar eşlidir ve proje içindeki optimizasyon kopyaları bağımsız örnek sayılmaz.
+- Her tekrarda aynı proje örneklemi beş karşılaştırmanın tamamında kullanılır.
+  Böylece farklar eşlidir ve proje içindeki optimizasyon kopyaları bağımsız örnek sayılmaz.
 - Nokta tahmini, proje kümeleri üzerinden satır-ağırlıklı macro token recall
   farkıdır. Aralık 2.000 tekrar ve 42 tohumla percentile yöntemiyle, doğrusal
   interpolasyon kullanılarak hesaplanır.
 
 Karşılaştırmalar:
 
-1. `gold - anonymised`: bütün callee adları bilinseydi bağlamın sağlayacağı
-   sözcüksel bilgi üst sınırı.
-2. `v5_predicted - anonymised`: sabit v5 callee tahminleriyle görülebilen
-   sözcüksel bilgi.
+1. `gold - anonymised`: bütün çözümlenmiş callee adları bilinseydi bağlamın
+   sağlayacağı toplam sözcüksel bilgi.
+2. `gold_prediction_coverage - anonymised`: yalnız sabit v5 tahmini bulunan
+   callee yuvalarında gerçek adlar kullanılsaydı görülecek sözcüksel bilgi.
+3. `v5_predicted - anonymised`: aynı yuvalara sabit v5 tahmin adları yazıldığında
+   gerçekten görülen sözcüksel bilgi.
+4. `gold_prediction_coverage - v5_predicted`: aynı tahmin kapsamı sabitken
+   yanlış callee adlarının yol açtığı sözcüksel bilgi farkı.
+5. `gold - gold_prediction_coverage`: v5 için tahmin bulunmayan callee
+   yuvalarının eksik kapsama nedeniyle kaybettirdiği ek sözcüksel bilgi.
 
-İkinci fark modelin yeniden adlandırma başarısına eşit değildir; yalnız tahmin
-edilmiş callee adlarının bağlama eklediği sözcük örtüşmesini ölçer.
+İkinci ve üçüncü karşılaştırmalar aynı callee yuvalarını kullandığı için
+dördüncü karşılaştırma kapsam farkını ad doğruluğu farkından ayırır. Bu
+karşılaştırmalar yine modelin yeniden adlandırma başarısına eşit değildir;
+yalnız bağlama eklenen hedef-token örtüşmesini ölçer.
 
 ## Çalıştırma
 
