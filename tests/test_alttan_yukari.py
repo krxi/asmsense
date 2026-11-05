@@ -45,8 +45,6 @@ def prepared(row, context=""):
     }
 
 
-
-
 def write_jsonl(path, rows):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
@@ -119,9 +117,7 @@ def test_validation_guard_rejects_mismatched_prediction_ids(tmp_path, monkeypatc
     write_jsonl(predictions_path, changed)
     refresh_prediction_hash(tmp_path, predictions_path)
     with pytest.raises(ValueError, match="identifier sets"):
-        simulator.validate_validation_inputs(
-            prompts_path, raw_path, predictions_path, prompts, raw_rows, changed
-        )
+        simulator.validate_validation_inputs(prompts_path, raw_path, predictions_path, prompts, raw_rows, changed)
 
 
 def test_validation_guard_rejects_prediction_gold_mismatch(tmp_path, monkeypatch):
@@ -142,9 +138,7 @@ def test_validation_guard_rejects_raw_directories(tmp_path, monkeypatch):
     raw_path.unlink()
     raw_path.mkdir()
     with pytest.raises(ValueError, match="one complete validation"):
-        simulator.validate_validation_inputs(
-            prompts_path, raw_path, predictions_path, prompts, raw_rows, predictions
-        )
+        simulator.validate_validation_inputs(prompts_path, raw_path, predictions_path, prompts, raw_rows, predictions)
 
 
 def test_row_level_export_must_stay_outside_repository(tmp_path, monkeypatch):
@@ -156,7 +150,7 @@ def test_row_level_export_must_stay_outside_repository(tmp_path, monkeypatch):
 def test_readme_bottom_up_example_is_validation_only():
     readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
     start = readme.index("### Bottom-up naming (no training)")
-    end = readme.index("alttan_yukari.py runs", start)
+    end = readme.index("runs leaf-first inference", start)
     section = readme[start:end]
     fence = chr(96) * 3
     command = section.split(fence + "bash", 1)[1].split(fence, 1)[0]
