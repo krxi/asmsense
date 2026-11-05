@@ -61,8 +61,8 @@ Ardından yalnız aggregate özeti kullanın:
 ```sh
 python3 alttan_yukari_bootstrap.py \
   --ozet /tmp/bottom-up-summary.json \
-  --cikti /tmp/bottom-up-bootstrap.json \\
-  --audit-commit "$AUDIT_COMMIT" \\
+  --cikti /tmp/bottom-up-bootstrap.json \
+  --audit-commit "$AUDIT_COMMIT" \
   --tekrar 2000 --tohum 42
 ```
 
