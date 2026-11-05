@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Offline lexical-information bounds for callee naming, NOT model accuracy bounds."""
+
 import argparse
 import hashlib
 import json
@@ -70,9 +71,7 @@ def aggregate(rows):
         "shared_tokens": sum(r["shared_tokens"] for r in rows),
         "target_tokens": sum(r["target_tokens"] for r in rows),
         "micro_token_recall": (
-            sum(r["shared_tokens"] for r in rows) / sum(r["target_tokens"] for r in rows)
-            if rows
-            else 0.0
+            sum(r["shared_tokens"] for r in rows) / sum(r["target_tokens"] for r in rows) if rows else 0.0
         ),
         "macro_token_recall": mean(r["token_recall"] for r in rows) if rows else 0.0,
         "raw_macro_token_recall": mean(r["raw_token_recall"] for r in rows) if rows else 0.0,
@@ -255,12 +254,10 @@ def simulate(rows, raw, predictions):
     }
     paired = {
         "gold_minus_anonymised_macro_recall": mean(
-            b["token_recall"] - a["token_recall"]
-            for a, b in zip(diagnostics["anonymised"], diagnostics["gold"])
+            b["token_recall"] - a["token_recall"] for a, b in zip(diagnostics["anonymised"], diagnostics["gold"])
         ),
         "predicted_minus_anonymised_macro_recall": mean(
-            b["token_recall"] - a["token_recall"]
-            for a, b in zip(diagnostics["anonymised"], diagnostics["v5_predicted"])
+            b["token_recall"] - a["token_recall"] for a, b in zip(diagnostics["anonymised"], diagnostics["v5_predicted"])
         ),
     }
     summary = {
