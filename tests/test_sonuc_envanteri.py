@@ -1,6 +1,6 @@
 import subprocess
 
-from sonuc_envanteri import envanteri_uret, main, rapor_metni
+from sonuc_envanteri import _siniflandir, envanteri_uret, main, rapor_metni
 
 
 def _git(kok, *args):
@@ -66,6 +66,11 @@ def test_sonraki_satirdaki_satir_duzeyi_kayit_dosyayi_isaretler(tmp_path):
 
     assert sayim["satir_duzeyi"] == 2
     assert sayim["toplu"] == 1
+
+
+def test_nested_english_row_level_alias_is_classified():
+    icerik = '{"records":[{"metadata":{"Prediction":"synthetic-value"}}]}'
+    assert _siniflandir(icerik) == "satir_duzeyi"
 
 
 def test_strict_belirsiz_ve_satir_duzeyi_dosyada_basarisiz(tmp_path, monkeypatch, capsys):

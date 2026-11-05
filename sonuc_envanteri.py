@@ -10,41 +10,7 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 
-
-SATIR_DUZEYI_ALANLARI = frozenset(
-    {
-        "id",
-        "gercek",
-        "gercek_ad",
-        "tahmin",
-        "asm",
-        "assembly",
-        "source",
-        "kaynak",
-        "anahtar",
-        "gerekce_en",
-        "gerekce_tr",
-        "puan_en",
-        "puan_tr",
-        "ogretmen",
-        "proje",
-        "opt",
-        "token",
-        "aciklama",
-        "aciklama_en",
-        "function",
-        "function_name",
-        "function_id",
-        "address",
-        "target",
-        "prediction",
-        "gold",
-        "prompt",
-        "completion",
-        "decompile",
-        "pseudocode",
-    }
-)
+from sonuc_guvencesi import satir_duzeyi_alan_var
 
 TOPLU_ALANLARI = frozenset(
     {
@@ -98,9 +64,8 @@ def _siniflandir(icerik: str) -> str:
             bozuk = True
             continue
 
-        alanlar = set(kayit)
-        anahtarlar.update(alanlar)
-        if alanlar & SATIR_DUZEYI_ALANLARI:
+        anahtarlar.update(kayit)
+        if satir_duzeyi_alan_var(kayit):
             satir_duzeyi = True
 
     if satir_duzeyi:
