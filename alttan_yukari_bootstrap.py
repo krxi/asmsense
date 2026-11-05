@@ -168,10 +168,10 @@ def paired_project_bootstrap(
     estimates = {}
     samples = {name: [] for name, _, _ in COMPARISONS}
     for name, left, right in COMPARISONS:
-        estimates[name] = sum(
-            int(values[project]["rows"]) * (values[project][left] - values[project][right])
-            for project in projects
-        ) / total_rows
+        estimates[name] = (
+            sum(int(values[project]["rows"]) * (values[project][left] - values[project][right]) for project in projects)
+            / total_rows
+        )
 
     rng = random.Random(seed)
     for _ in range(replicates):
@@ -179,8 +179,7 @@ def paired_project_bootstrap(
         denominator = sum(int(values[project]["rows"]) for project in sampled)
         for name, left, right in COMPARISONS:
             numerator = sum(
-                int(values[project]["rows"]) * (values[project][left] - values[project][right])
-                for project in sampled
+                int(values[project]["rows"]) * (values[project][left] - values[project][right]) for project in sampled
             )
             samples[name].append(numerator / denominator)
 
