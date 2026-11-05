@@ -171,10 +171,7 @@ def esli_proje_bootstrap(
     ornekler = {ad: [] for ad, _, _ in KARSILASTIRMALAR}
     for ad, sol, sag in KARSILASTIRMALAR:
         tahminler[ad] = (
-            sum(
-                int(degerler[proje]["rows"]) * (degerler[proje][sol] - degerler[proje][sag])
-                for proje in projeler
-            )
+            sum(int(degerler[proje]["rows"]) * (degerler[proje][sol] - degerler[proje][sag]) for proje in projeler)
             / toplam_satir
         )
 
@@ -183,10 +180,7 @@ def esli_proje_bootstrap(
         secilen = [uretic.choice(projeler) for _ in projeler]
         payda = sum(int(degerler[proje]["rows"]) for proje in secilen)
         for ad, sol, sag in KARSILASTIRMALAR:
-            pay = sum(
-                int(degerler[proje]["rows"]) * (degerler[proje][sol] - degerler[proje][sag])
-                for proje in secilen
-            )
+            pay = sum(int(degerler[proje]["rows"]) * (degerler[proje][sol] - degerler[proje][sag]) for proje in secilen)
             ornekler[ad].append(pay / payda)
 
     sonuc = {}
