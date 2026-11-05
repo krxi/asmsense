@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pinned validation-only project-cluster bootstrap for bottom-up lexical diagnostics."""
+"""Bottom-up sözcüksel tanılama için sabit validation kümesi üzerinde eşli proje bootstrap'i."""
 
 import argparse
 import hashlib
@@ -11,197 +11,206 @@ from pathlib import Path
 from typing import Dict, List, Mapping, Optional, Tuple
 
 KOK = Path(__file__).resolve().parent
-VALIDATION_ROWS = 300
-DEFAULT_REPLICATES = 2000
-DEFAULT_SEED = 42
-METRIC = "macro_token_recall"
-COMPARISONS = (
+DOGRULAMA_SATIRI = 300
+VARSAYILAN_TEKRAR = 2000
+VARSAYILAN_TOHUM = 42
+OLCUT = "macro_token_recall"
+KARSILASTIRMALAR = (
     ("gold_minus_anonymised_macro_token_recall", "gold", "anonymised"),
     ("v5_predicted_minus_anonymised_macro_token_recall", "v5_predicted", "anonymised"),
 )
-MODES = ("anonymised", "gold", "v5_predicted")
+KIPLER = ("anonymised", "gold", "v5_predicted")
 
 
-def sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+def sha256(yol: Path) -> str:
+    ozet = hashlib.sha256()
+    with yol.open("rb") as akim:
+        for parca in iter(lambda: akim.read(1024 * 1024), b""):
+            ozet.update(parca)
+    return ozet.hexdigest()
 
 
-def _json_object(path: Path, label: str) -> Dict[str, object]:
+def _json_nesnesi(yol: Path, etiket: str) -> Dict[str, object]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        deger = json.loads(yol.read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        raise ValueError(label + " manifest or summary is missing or invalid") from None
-    if not isinstance(value, dict):
-        raise ValueError(label + " must be a JSON object")
-    return value
+        raise ValueError(etiket + " manifesti veya özeti eksik ya da geçersiz") from None
+    if not isinstance(deger, dict):
+        raise ValueError(etiket + " bir JSON nesnesi olmalı")
+    return deger
 
 
-def _hash(value: object, label: str) -> str:
-    if not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{64}", value):
-        raise ValueError(label + " is not a SHA-256 digest")
-    return value
+def _hash_dogrula(deger: object, etiket: str) -> str:
+    if not isinstance(deger, str) or not re.fullmatch(r"[0-9a-f]{64}", deger):
+        raise ValueError(etiket + " geçerli bir SHA-256 özeti değil")
+    return deger
 
 
-def expected_validation_hashes(root: Optional[Path] = None) -> Dict[str, str]:
-    root = root or KOK
-    v6 = _json_object(root / "lora" / "v6_girdi_manifest.json", "v6")
-    audit = _json_object(root / "rapor" / "arastirma" / "dogrulama_manifest.json", "validation")
+def beklenen_dogrulama_hashleri(kok: Optional[Path] = None) -> Dict[str, str]:
+    kok = kok or KOK
+    v6 = _json_nesnesi(kok / "lora" / "v6_girdi_manifest.json", "v6")
+    denetim = _json_nesnesi(kok / "rapor" / "arastirma" / "dogrulama_manifest.json", "validation")
     try:
-        hashes = {
+        hashler = {
             "prompts": v6["beklenen_sha256"]["valid_v6"],
-            "raw": audit["tam_dogrulama_sha256"],
-            "predictions": audit["dondurulmus_tahminler"]["v5"],
+            "raw": denetim["tam_dogrulama_sha256"],
+            "predictions": denetim["dondurulmus_tahminler"]["v5"],
         }
     except (KeyError, TypeError):
-        raise ValueError("repository manifests do not pin all validation inputs") from None
-    return {name: _hash(value, name) for name, value in hashes.items()}
+        raise ValueError("depo manifestleri gerekli validation girdilerini sabitlemiyor") from None
+    return {ad: _hash_dogrula(deger, ad) for ad, deger in hashler.items()}
 
 
-def _validate_provenance(summary: Mapping[str, object], expected: Mapping[str, str]) -> Dict[str, str]:
-    provenance = summary.get("provenance")
-    if not isinstance(provenance, dict):
-        raise ValueError("summary has no input provenance")
-    prompts_hash = provenance.get("prompts_sha256")
-    predictions_hash = provenance.get("predictions_sha256")
-    raw_hashes = provenance.get("raw_sha256")
-    if prompts_hash != expected["prompts"]:
-        raise ValueError("summary prompts are not the pinned v6 validation input")
-    if predictions_hash != expected["predictions"]:
-        raise ValueError("summary predictions are not the pinned v5 validation input")
-    if not isinstance(raw_hashes, dict) or len(raw_hashes) != 1:
-        raise ValueError("summary must identify exactly one complete raw validation file")
-    if next(iter(raw_hashes.values())) != expected["raw"]:
-        raise ValueError("summary raw data is not the pinned v4 validation input")
+def _dayanak_dogrula(ozet: Mapping[str, object], beklenen: Mapping[str, str]) -> Dict[str, str]:
+    dayanak = ozet.get("provenance")
+    if not isinstance(dayanak, dict):
+        raise ValueError("özette girdi dayanağı yok")
+    istem_hash = dayanak.get("prompts_sha256")
+    tahmin_hash = dayanak.get("predictions_sha256")
+    ham_hashler = dayanak.get("raw_sha256")
+    if istem_hash != beklenen["prompts"]:
+        raise ValueError("özet sabit v6 validation istemleriyle eşleşmiyor")
+    if tahmin_hash != beklenen["predictions"]:
+        raise ValueError("özet sabit v5 validation tahminleriyle eşleşmiyor")
+    if not isinstance(ham_hashler, dict) or len(ham_hashler) != 1:
+        raise ValueError("özet tam olarak bir ham validation dosyası tanımlamalı")
+    if next(iter(ham_hashler.values())) != beklenen["raw"]:
+        raise ValueError("özet sabit v4 validation verisiyle eşleşmiyor")
     return {
-        "prompts_sha256": expected["prompts"],
-        "raw_sha256": expected["raw"],
-        "predictions_sha256": expected["predictions"],
+        "prompts_sha256": beklenen["prompts"],
+        "raw_sha256": beklenen["raw"],
+        "predictions_sha256": beklenen["predictions"],
     }
 
 
-def _finite_ratio(value: object, label: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise ValueError(label + " must be a finite number")
-    result = float(value)
-    if not math.isfinite(result) or not 0.0 <= result <= 1.0:
-        raise ValueError(label + " must be between 0 and 1")
-    return result
+def _sonlu_oran(deger: object, etiket: str) -> float:
+    if isinstance(deger, bool) or not isinstance(deger, (int, float)):
+        raise ValueError(etiket + " sonlu bir sayı olmalı")
+    sonuc = float(deger)
+    if not math.isfinite(sonuc) or not 0.0 <= sonuc <= 1.0:
+        raise ValueError(etiket + " 0 ile 1 arasında olmalı")
+    return sonuc
 
 
-def project_values(summary: Mapping[str, object]) -> Tuple[Dict[str, Dict[str, float]], int]:
-    modes = summary.get("modes")
-    projects = summary.get("projects")
-    if not isinstance(modes, dict) or not isinstance(projects, dict):
-        raise ValueError("summary must contain modes and per-project aggregates")
+def proje_degerleri(ozet: Mapping[str, object]) -> Tuple[Dict[str, Dict[str, float]], int]:
+    kip_ozetleri = ozet.get("modes")
+    projeler = ozet.get("projects")
+    if not isinstance(kip_ozetleri, dict) or not isinstance(projeler, dict):
+        raise ValueError("özet kipleri ve proje bazlı toplulaştırmaları içermeli")
 
-    project_sets = []
-    for mode in MODES:
-        mode_projects = projects.get(mode)
-        mode_summary = modes.get(mode)
-        if not isinstance(mode_projects, dict) or not isinstance(mode_summary, dict):
-            raise ValueError("summary is missing a required mode: " + mode)
-        if mode_summary.get("rows") != VALIDATION_ROWS:
-            raise ValueError("mode row count is not the fixed 300-row validation cohort")
-        project_sets.append(set(mode_projects))
+    proje_kumeleri = []
+    for kip in KIPLER:
+        kip_projeleri = projeler.get(kip)
+        kip_ozeti = kip_ozetleri.get(kip)
+        if not isinstance(kip_projeleri, dict) or not isinstance(kip_ozeti, dict):
+            raise ValueError("özette gerekli kip eksik: " + kip)
+        if kip_ozeti.get("rows") != DOGRULAMA_SATIRI:
+            raise ValueError("kip satır sayısı sabit 300 satırlık validation kümesi değil")
+        proje_kumeleri.append(set(kip_projeleri))
 
-    if not project_sets[0] or any(project_set != project_sets[0] for project_set in project_sets[1:]):
-        raise ValueError("project sets differ between paired modes")
-    if len(project_sets[0]) < 2:
-        raise ValueError("at least two project clusters are required")
+    if not proje_kumeleri[0] or any(kume != proje_kumeleri[0] for kume in proje_kumeleri[1:]):
+        raise ValueError("eşli kipler arasında proje kümeleri farklı")
+    if len(proje_kumeleri[0]) < 2:
+        raise ValueError("en az iki proje kümesi gerekli")
 
-    values: Dict[str, Dict[str, float]] = {}
-    total_rows = 0
-    for project in sorted(project_sets[0]):
-        if not isinstance(project, str) or not project:
-            raise ValueError("invalid project key in aggregate summary")
-        cluster: Dict[str, float] = {}
-        row_count = None
-        for mode in MODES:
-            metrics = projects[mode][project]
-            if not isinstance(metrics, dict):
-                raise ValueError("invalid per-project aggregate")
-            rows = metrics.get("rows")
-            if isinstance(rows, bool) or not isinstance(rows, int) or rows <= 0:
-                raise ValueError("per-project row count must be a positive integer")
-            if row_count is None:
-                row_count = rows
-            elif row_count != rows:
-                raise ValueError("per-project row counts differ between paired modes")
-            cluster[mode] = _finite_ratio(metrics.get(METRIC), mode + "." + METRIC)
-        cluster["rows"] = float(row_count)
-        values[project] = cluster
-        total_rows += row_count
+    degerler: Dict[str, Dict[str, float]] = {}
+    toplam_satir = 0
+    for proje in sorted(proje_kumeleri[0]):
+        if not isinstance(proje, str) or not proje:
+            raise ValueError("toplu özette geçersiz proje anahtarı")
+        kume: Dict[str, float] = {}
+        satir_sayisi = None
+        for kip in KIPLER:
+            metrikler = projeler[kip][proje]
+            if not isinstance(metrikler, dict):
+                raise ValueError("geçersiz proje toplulaştırması")
+            satir = metrikler.get("rows")
+            if isinstance(satir, bool) or not isinstance(satir, int) or satir <= 0:
+                raise ValueError("proje satır sayısı pozitif bir tamsayı olmalı")
+            if satir_sayisi is None:
+                satir_sayisi = satir
+            elif satir_sayisi != satir:
+                raise ValueError("eşli kiplerde proje satır sayıları farklı")
+            kume[kip] = _sonlu_oran(metrikler.get(OLCUT), kip + "." + OLCUT)
+        kume["rows"] = float(satir_sayisi)
+        degerler[proje] = kume
+        toplam_satir += satir_sayisi
 
-    if total_rows != VALIDATION_ROWS:
-        raise ValueError("per-project aggregates do not sum to the fixed validation cohort")
-    if summary.get("prediction_rows") != VALIDATION_ROWS:
-        raise ValueError("prediction row count is not the fixed 300-row validation cohort")
-    return values, total_rows
-
-
-def _quantile(sorted_values: List[float], probability: float) -> float:
-    position = (len(sorted_values) - 1) * probability
-    lower = int(math.floor(position))
-    upper = int(math.ceil(position))
-    if lower == upper:
-        return sorted_values[lower]
-    weight = position - lower
-    return sorted_values[lower] * (1.0 - weight) + sorted_values[upper] * weight
+    if toplam_satir != DOGRULAMA_SATIRI:
+        raise ValueError("proje toplulaştırmaları sabit validation kümesindeki 300 satıra eşit değil")
+    if ozet.get("prediction_rows") != DOGRULAMA_SATIRI:
+        raise ValueError("tahmin satır sayısı sabit 300 satırlık validation kümesi değil")
+    return degerler, toplam_satir
 
 
-def paired_project_bootstrap(
-    values: Mapping[str, Mapping[str, float]], replicates: int = DEFAULT_REPLICATES, seed: int = DEFAULT_SEED
+def _kantil(sirali: List[float], olasilik: float) -> float:
+    konum = (len(sirali) - 1) * olasilik
+    alt = int(math.floor(konum))
+    ust = int(math.ceil(konum))
+    if alt == ust:
+        return sirali[alt]
+    agirlik = konum - alt
+    return sirali[alt] * (1.0 - agirlik) + sirali[ust] * agirlik
+
+
+def esli_proje_bootstrap(
+    degerler: Mapping[str, Mapping[str, float]],
+    tekrar: int = VARSAYILAN_TEKRAR,
+    tohum: int = VARSAYILAN_TOHUM,
 ) -> Dict[str, Dict[str, object]]:
-    if isinstance(replicates, bool) or not isinstance(replicates, int) or replicates < 100:
-        raise ValueError("bootstrap replicates must be an integer >= 100")
-    if isinstance(seed, bool) or not isinstance(seed, int):
-        raise ValueError("bootstrap seed must be an integer")
-    projects = sorted(values)
-    if len(projects) < 2:
-        raise ValueError("at least two project clusters are required")
+    if isinstance(tekrar, bool) or not isinstance(tekrar, int) or tekrar < 100:
+        raise ValueError("bootstrap tekrarı en az 100 tamsayı olmalı")
+    if isinstance(tohum, bool) or not isinstance(tohum, int):
+        raise ValueError("bootstrap tohumu tamsayı olmalı")
+    projeler = sorted(degerler)
+    if len(projeler) < 2:
+        raise ValueError("en az iki proje kümesi gerekli")
 
-    total_rows = sum(int(values[project]["rows"]) for project in projects)
-    estimates = {}
-    samples = {name: [] for name, _, _ in COMPARISONS}
-    for name, left, right in COMPARISONS:
-        estimates[name] = (
-            sum(int(values[project]["rows"]) * (values[project][left] - values[project][right]) for project in projects)
-            / total_rows
+    toplam_satir = sum(int(degerler[proje]["rows"]) for proje in projeler)
+    tahminler = {}
+    ornekler = {ad: [] for ad, _, _ in KARSILASTIRMALAR}
+    for ad, sol, sag in KARSILASTIRMALAR:
+        tahminler[ad] = (
+            sum(
+                int(degerler[proje]["rows"]) * (degerler[proje][sol] - degerler[proje][sag])
+                for proje in projeler
+            )
+            / toplam_satir
         )
 
-    rng = random.Random(seed)
-    for _ in range(replicates):
-        sampled = [rng.choice(projects) for _ in projects]
-        denominator = sum(int(values[project]["rows"]) for project in sampled)
-        for name, left, right in COMPARISONS:
-            numerator = sum(
-                int(values[project]["rows"]) * (values[project][left] - values[project][right]) for project in sampled
+    uretic = random.Random(tohum)
+    for _ in range(tekrar):
+        secilen = [uretic.choice(projeler) for _ in projeler]
+        payda = sum(int(degerler[proje]["rows"]) for proje in secilen)
+        for ad, sol, sag in KARSILASTIRMALAR:
+            pay = sum(
+                int(degerler[proje]["rows"]) * (degerler[proje][sol] - degerler[proje][sag])
+                for proje in secilen
             )
-            samples[name].append(numerator / denominator)
+            ornekler[ad].append(pay / payda)
 
-    result = {}
-    for name, _, _ in COMPARISONS:
-        ordered = sorted(samples[name])
-        result[name] = {
-            "estimate": round(estimates[name], 9),
-            "ci95": [round(_quantile(ordered, 0.025), 9), round(_quantile(ordered, 0.975), 9)],
-            "n_projects": len(projects),
-            "n_rows": total_rows,
+    sonuc = {}
+    for ad, _, _ in KARSILASTIRMALAR:
+        sirali = sorted(ornekler[ad])
+        sonuc[ad] = {
+            "estimate": round(tahminler[ad], 9),
+            "ci95": [round(_kantil(sirali, 0.025), 9), round(_kantil(sirali, 0.975), 9)],
+            "n_projects": len(projeler),
+            "n_rows": toplam_satir,
         }
-    return result
+    return sonuc
 
 
-def build_report(
-    summary_path: Path, summary: Mapping[str, object], replicates: int = DEFAULT_REPLICATES, seed: int = DEFAULT_SEED
+def rapor_olustur(
+    ozet_yolu: Path,
+    ozet: Mapping[str, object],
+    tekrar: int = VARSAYILAN_TEKRAR,
+    tohum: int = VARSAYILAN_TOHUM,
 ) -> Dict[str, object]:
-    expected = expected_validation_hashes()
-    input_hashes = _validate_provenance(summary, expected)
-    values, total_rows = project_values(summary)
-    comparisons = paired_project_bootstrap(values, replicates=replicates, seed=seed)
+    beklenen = beklenen_dogrulama_hashleri()
+    girdi_hashleri = _dayanak_dogrula(ozet, beklenen)
+    degerler, toplam_satir = proje_degerleri(ozet)
+    karsilastirmalar = esli_proje_bootstrap(degerler, tekrar=tekrar, tohum=tohum)
     return {
         "schema": 1,
         "scope": "fixed validation-only valid300; no test/eval scoring",
@@ -209,21 +218,21 @@ def build_report(
         "method": "paired project-cluster percentile bootstrap with linear-interpolated 95% intervals",
         "resampling_unit": "project",
         "weighting": "row-weighted macro token recall; all rows in each sampled project stay together",
-        "replicates": replicates,
-        "seed": seed,
+        "replicates": tekrar,
+        "seed": tohum,
         "confidence_level": 0.95,
-        "n_projects": len(values),
-        "n_rows": total_rows,
-        "summary_sha256": sha256(summary_path),
-        "validation_inputs": input_hashes,
-        "comparisons": comparisons,
+        "n_projects": len(degerler),
+        "n_rows": toplam_satir,
+        "summary_sha256": sha256(ozet_yolu),
+        "validation_inputs": girdi_hashleri,
+        "comparisons": karsilastirmalar,
     }
 
 
-def is_inside_repo(path: Path, root: Optional[Path] = None) -> bool:
-    root = root or KOK
+def depo_icinde(yol: Path, kok: Optional[Path] = None) -> bool:
+    kok = kok or KOK
     try:
-        path.resolve().relative_to(root.resolve())
+        yol.resolve().relative_to(kok.resolve())
     except ValueError:
         return False
     return True
@@ -231,29 +240,29 @@ def is_inside_repo(path: Path, root: Optional[Path] = None) -> bool:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--summary", required=True, type=Path, help="aggregate output from alttan_yukari_sim.py")
-    parser.add_argument("--output", required=True, type=Path, help="new aggregate JSON path outside the repository")
-    parser.add_argument("--replicates", type=int, default=DEFAULT_REPLICATES)
-    parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
+    parser.add_argument("--ozet", required=True, type=Path, help="alttan_yukari_sim.py toplu çıktısı")
+    parser.add_argument("--cikti", required=True, type=Path, help="depo dışında yeni toplu JSON yolu")
+    parser.add_argument("--tekrar", type=int, default=VARSAYILAN_TEKRAR)
+    parser.add_argument("--tohum", type=int, default=VARSAYILAN_TOHUM)
     args = parser.parse_args(argv)
 
     try:
-        if not args.summary.is_file():
-            raise ValueError("summary must be one aggregate JSON file")
-        if is_inside_repo(args.output):
-            raise ValueError("aggregate output must be outside the repository")
-        if args.output.exists():
-            raise FileExistsError("output already exists; it will not be overwritten")
-        summary = _json_object(args.summary, "summary")
-        report = build_report(args.summary, summary, replicates=args.replicates, seed=args.seed)
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        with args.output.open("x", encoding="utf-8") as stream:
-            json.dump(report, stream, ensure_ascii=False, indent=2, allow_nan=False)
-            stream.write("\n")
-    except (OSError, ValueError) as error:
-        parser.exit(2, "ERROR: " + str(error) + "\n")
+        if not args.ozet.is_file():
+            raise ValueError("özet tek bir toplu JSON dosyası olmalı")
+        if depo_icinde(args.cikti):
+            raise ValueError("toplu çıktı depo dışında olmalı")
+        if args.cikti.exists():
+            raise FileExistsError("çıktı zaten var; üzerine yazılmayacak")
+        ozet = _json_nesnesi(args.ozet, "Özet")
+        rapor = rapor_olustur(args.ozet, ozet, tekrar=args.tekrar, tohum=args.tohum)
+        args.cikti.parent.mkdir(parents=True, exist_ok=True)
+        with args.cikti.open("x", encoding="utf-8") as akim:
+            json.dump(rapor, akim, ensure_ascii=False, indent=2, allow_nan=False)
+            akim.write("\n")
+    except (OSError, ValueError) as hata:
+        parser.exit(2, "HATA: " + str(hata) + "\n")
 
-    print(json.dumps(report, ensure_ascii=False, allow_nan=False))
+    print(json.dumps(rapor, ensure_ascii=False, allow_nan=False))
     return 0
 
 
