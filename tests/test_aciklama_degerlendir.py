@@ -294,7 +294,6 @@ def test_cli_kapsam_hatasi_sayaclari_yazar_yolu_yazmaz(girdiler, capsys):
     assert str(veri.parent) not in hata and "Traceback" not in hata
 
 
-
 def test_kaynak_kapsami_yalniz_toplu_sayac_yazar(girdiler, tmp_path):
     veri, _, kaynak = girdiler
     kayitlar = ad.jsonl_oku(kaynak)
@@ -347,7 +346,6 @@ def test_kaynak_kapsami_cli_sadece_aggregate_json_yazar(girdiler, capsys):
     assert "synthetic_f" not in yayin
     assert "return" not in yayin
     assert str(veri.parent) not in yayin
-
 
 
 def test_kaynak_kapsami_opt_kopyalarini_tek_kaynak_sayar(girdiler, monkeypatch, tmp_path):
