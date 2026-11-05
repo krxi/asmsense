@@ -83,7 +83,7 @@ def test_proje_bootstrap_esli_ve_deterministik(tmp_path, monkeypatch):
         assert sonuc["ci95"][0] <= sonuc["ci95"][1]
 
 
-def test_rapor_yalniz_toplu_daynak_icerir(tmp_path, monkeypatch):
+def test_rapor_yalniz_toplu_dayanak_icerir(tmp_path, monkeypatch):
     _, ozet_yolu = hazirla(tmp_path, monkeypatch)
     ozet = json.loads(ozet_yolu.read_text(encoding="utf-8"))
 
@@ -100,7 +100,7 @@ def test_rapor_yalniz_toplu_daynak_icerir(tmp_path, monkeypatch):
     assert "asm" not in rapor
 
 
-def test_yanlis_dogrulama_dayanağı_reddedilir(tmp_path, monkeypatch):
+def test_yanlis_dogrulama_dayanagi_reddedilir(tmp_path, monkeypatch):
     _, ozet_yolu = hazirla(tmp_path, monkeypatch)
     ozet = json.loads(ozet_yolu.read_text(encoding="utf-8"))
     ozet["provenance"]["prompts_sha256"] = "0" * 64
