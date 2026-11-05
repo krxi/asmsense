@@ -28,11 +28,10 @@ kanonik/öneksiz ad F1 değerlendirilmelidir.
 ## Paket ve etiket bütünlüğü
 
 Puanlayıcı yalnız C kaynağı ve İngilizce açıklamayı görür. Hedef işlevin
-tam C tanımlayıcıları kodda ve yorumlarda sabit nötr bir adla maskelenir;
-string/char sabitleri korunur. Sistem/tahmin/F1/özgün ID alanları gösterilmez.
-Kaynakta hedef tanımlayıcısı kod içinde bulunamazsa paket oluşturulmaz.
-Diğer tanımlayıcılar korunur; string sabitinin hedef adını aynen içermesi hâlinde
-bu artık bir sembol değil, davranış verisi olarak görünür kalabilir.
+tam tanımlayıcı yazımı kodda, yorumlarda ve string/char sabitlerinde sabit nötr
+bir adla maskelenir; diğer tanımlayıcılar ve literal içeriğinin geri kalanı
+korunur. Sistem/tahmin/F1/özgün ID alanları gösterilmez. Hedef tanımlayıcı kodda
+bulunamazsa paket oluşturulmaz.
 Paket değiştirilmeyen özgün JSONL'dir. Yanında üretilen etiket şablonunun
 her satırı özgün **paket baytlarının SHA-256** değerini taşır. İki puanlayıcı
 bu şablonun ayrı kopyalarını doldurur; paketi düzenlemez. Kör anahtar da aynı
