@@ -28,8 +28,7 @@ def sentetik_ozet():
     kipler = {}
     for kip in bootstrap.KIPLER:
         projeler[kip] = {
-            proje: {"rows": deger["rows"], "macro_token_recall": deger[kip]}
-            for proje, deger in proje_satirlari.items()
+            proje: {"rows": deger["rows"], "macro_token_recall": deger[kip]} for proje, deger in proje_satirlari.items()
         }
         kipler[kip] = {"rows": 300}
     return {
