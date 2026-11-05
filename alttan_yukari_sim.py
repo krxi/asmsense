@@ -8,10 +8,20 @@ from collections import Counter
 from pathlib import Path
 from statistics import mean
 
-from alttan_yukari import (SUB, components_leaf_first, context_parts, context_symbols,
-                          graph_for, identity, indexed, prompt, read_rows)
+from alttan_yukari import (
+    SUB,
+    components_leaf_first,
+    context_parts,
+    context_symbols,
+    graph_for,
+    identity,
+    indexed,
+    prompt,
+    read_rows,
+)
 from taban import f1, kelimeler
 
+KOK = Path(__file__).resolve().parent
 IDENTIFIER = re.compile(r"\b[A-Za-z_][A-Za-z0-9_]*\b")
 LITERAL = re.compile(r'"(?:\\.|[^"\\])*"')
 
@@ -42,23 +52,32 @@ def lexical_metrics(target, names):
     tokens = set(kelimeler(target))
     available = {token for name in names for token in kelimeler(name)}
     shared = tokens & available
-    return {"target_tokens": len(tokens), "shared_tokens": len(shared),
-            "token_recall": len(shared) / len(tokens) if tokens else 0.0,
-            "any_shared": bool(shared), "all_shared": bool(tokens) and tokens <= available,
-            "best_copy_f1": max((f1(name, target) for name in names), default=0.0)}
+    return {
+        "target_tokens": len(tokens),
+        "shared_tokens": len(shared),
+        "token_recall": len(shared) / len(tokens) if tokens else 0.0,
+        "any_shared": bool(shared),
+        "all_shared": bool(tokens) and tokens <= available,
+        "best_copy_f1": max((f1(name, target) for name in names), default=0.0),
+    }
 
 
 def aggregate(rows):
-    return {"rows": len(rows),
-            "any_shared_rows": sum(r["any_shared"] for r in rows),
-            "all_shared_rows": sum(r["all_shared"] for r in rows),
-            "shared_tokens": sum(r["shared_tokens"] for r in rows),
-            "target_tokens": sum(r["target_tokens"] for r in rows),
-            "micro_token_recall": (sum(r["shared_tokens"] for r in rows) /
-                                   sum(r["target_tokens"] for r in rows)) if rows else 0.0,
-            "macro_token_recall": mean(r["token_recall"] for r in rows) if rows else 0.0,
-            "raw_macro_token_recall": mean(r["raw_token_recall"] for r in rows) if rows else 0.0,
-            "oracle_best_copy_f1": mean(r["best_copy_f1"] for r in rows) if rows else 0.0}
+    return {
+        "rows": len(rows),
+        "any_shared_rows": sum(r["any_shared"] for r in rows),
+        "all_shared_rows": sum(r["all_shared"] for r in rows),
+        "shared_tokens": sum(r["shared_tokens"] for r in rows),
+        "target_tokens": sum(r["target_tokens"] for r in rows),
+        "micro_token_recall": (
+            sum(r["shared_tokens"] for r in rows) / sum(r["target_tokens"] for r in rows)
+            if rows
+            else 0.0
+        ),
+        "macro_token_recall": mean(r["token_recall"] for r in rows) if rows else 0.0,
+        "raw_macro_token_recall": mean(r["raw_token_recall"] for r in rows) if rows else 0.0,
+        "oracle_best_copy_f1": mean(r["best_copy_f1"] for r in rows) if rows else 0.0,
+    }
 
 
 def sha256(path):
@@ -67,6 +86,84 @@ def sha256(path):
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _manifest(path):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        raise ValueError("validation manifest is missing or invalid") from None
+
+
+def _id_map(rows, label):
+    result = {}
+    for row in rows:
+        row_id = row.get("id") if isinstance(row, dict) else None
+        if not isinstance(row_id, str) or not row_id:
+            raise ValueError("invalid identifier in " + label)
+        if row_id in result:
+            raise ValueError("duplicate identifier in " + label)
+        result[row_id] = row
+    return result
+
+
+def validate_validation_inputs(prompts_path, raw_path, predictions_path, prompts, raw_rows, predictions):
+    """Require the exact, hash-pinned validation inputs before any lexical audit."""
+    if not raw_path.is_file():
+        raise ValueError("raw input must be one complete validation JSONL file")
+
+    v6_manifest = _manifest(KOK / "lora" / "v6_girdi_manifest.json")
+    validation_manifest = _manifest(KOK / "rapor" / "arastirma" / "dogrulama_manifest.json")
+    try:
+        expected = {
+            "prompts": v6_manifest["beklenen_sha256"]["valid_v6"],
+            "raw": validation_manifest["tam_dogrulama_sha256"],
+            "predictions": validation_manifest["dondurulmus_tahminler"]["v5"],
+        }
+    except (KeyError, TypeError):
+        raise ValueError("validation manifests do not pin all required inputs") from None
+
+    paths = {
+        "prompts": prompts_path,
+        "raw": raw_path,
+        "predictions": predictions_path,
+    }
+    for label, path in paths.items():
+        digest = expected[label]
+        if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise ValueError("validation manifest contains an invalid input hash")
+        try:
+            actual = sha256(path)
+        except OSError:
+            raise ValueError("a pinned validation input is unavailable") from None
+        if actual != digest:
+            raise ValueError(label + " do not match the frozen validation hash")
+
+    prompt_map = _id_map(prompts, "prompts")
+    prediction_map = _id_map(predictions, "predictions")
+    raw_map = _id_map(raw_rows, "raw validation data")
+    if not prompt_map or set(prompt_map) != set(prediction_map):
+        raise ValueError("prompt and prediction identifier sets must match")
+    if not set(prompt_map).issubset(raw_map):
+        raise ValueError("validation raw data does not cover every prompt identifier")
+
+    for row_id, row in prompt_map.items():
+        source = raw_map[row_id]
+        if identity(row) != identity(source) or row.get("gercek_ad") != source.get("ad"):
+            raise ValueError("prompt identity or gold label does not match validation raw data")
+
+    for row_id, prediction in prediction_map.items():
+        source = raw_map[row_id]
+        if identity(prediction) != identity(source) or prediction.get("gercek") != source.get("ad"):
+            raise ValueError("prediction identity or gold label does not match validation raw data")
+
+
+def is_inside_repo(path):
+    try:
+        Path(path).resolve().relative_to(KOK.resolve())
+    except ValueError:
+        return False
+    return True
 
 
 def simulate(rows, raw, predictions):
@@ -79,6 +176,8 @@ def simulate(rows, raw, predictions):
         source = raw.get(key)
         if source is None or source["id"] != prediction["id"]:
             raise ValueError("prediction identity is not aligned with raw data")
+        if prediction.get("gercek") != source["ad"]:
+            raise ValueError("prediction gold label mismatch")
         name = prediction.get("tahmin", "")
         if isinstance(name, str) and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) and not SUB.fullmatch(name):
             prediction_map[key] = name
@@ -114,7 +213,7 @@ def simulate(rows, raw, predictions):
         counts["rows_with_gold_rewrite"] += bool(maps["gold"])
         counts["rows_with_prediction_rewrite"] += bool(maps["v5_predicted"])
         counts["direct_summary_slots"] += len(re.findall(r"(?m)^sub_[0-9a-fA-F]+\s*\(", context))
-        counts["rows_with_strings"] += 'string ' in context or 'string:' in context
+        counts["rows_with_strings"] += "string " in context or "string:" in context
         target = strip_prefix(row["gercek_ad"], prefixes)
         record = {"id": row["id"], "metrics": {}, "prompts": {}}
         for mode in modes:
@@ -139,20 +238,33 @@ def simulate(rows, raw, predictions):
     counts["recursive_nodes"] = sum(len(g) for g in groups if len(g) > 1 or g[0] in graph[g[0]])
     full_graph, full_missing = graph_for(raw, raw)
     full_groups = list(components_leaf_first(full_graph))
-    full_stats = {"nodes": len(full_graph), "known_edges": sum(map(len, full_graph.values())),
-                  "missing_edges": sum(map(len, full_missing.values())), "scc_count": len(full_groups),
-                  "recursive_nodes": sum(len(g) for g in full_groups if len(g) > 1 or g[0] in full_graph[g[0]])}
-    paired = {"gold_minus_anonymised_macro_recall": mean(
-        b["token_recall"] - a["token_recall"] for a, b in zip(diagnostics["anonymised"], diagnostics["gold"])),
+    full_stats = {
+        "nodes": len(full_graph),
+        "known_edges": sum(map(len, full_graph.values())),
+        "missing_edges": sum(map(len, full_missing.values())),
+        "scc_count": len(full_groups),
+        "recursive_nodes": sum(len(g) for g in full_groups if len(g) > 1 or g[0] in full_graph[g[0]]),
+    }
+    paired = {
+        "gold_minus_anonymised_macro_recall": mean(
+            b["token_recall"] - a["token_recall"]
+            for a, b in zip(diagnostics["anonymised"], diagnostics["gold"])
+        ),
         "predicted_minus_anonymised_macro_recall": mean(
-        b["token_recall"] - a["token_recall"] for a, b in zip(diagnostics["anonymised"], diagnostics["v5_predicted"]))}
-    summary = {"interpretation": "Lexical information bounds only; no model inference, causal gain or accuracy bound.",
-               "counts": dict(counts), "paired": paired,
-               "prediction_rows": len(predictions), "valid_prediction_rows": len(prediction_map),
-               "full_raw_graph": full_stats,
-               "modes": {mode: aggregate(values) for mode, values in diagnostics.items()},
-               "projects": {mode: {p: aggregate(rs) for p, rs in project.items()}
-                            for mode, project in per_project.items()}}
+            b["token_recall"] - a["token_recall"]
+            for a, b in zip(diagnostics["anonymised"], diagnostics["v5_predicted"])
+        ),
+    }
+    summary = {
+        "interpretation": "Lexical information bounds only; no model inference, causal gain or accuracy bound.",
+        "counts": dict(counts),
+        "paired": paired,
+        "prediction_rows": len(predictions),
+        "valid_prediction_rows": len(prediction_map),
+        "full_raw_graph": full_stats,
+        "modes": {mode: aggregate(values) for mode, values in diagnostics.items()},
+        "projects": {mode: {project: aggregate(rows) for project, rows in per_project[mode].items()} for mode in modes},
+    }
     return summary, exports
 
 
@@ -162,20 +274,32 @@ def main():
     parser.add_argument("--raw", required=True, type=Path)
     parser.add_argument("--predictions", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--export", type=Path, help="optional per-row rewritten prompts + diagnostic metrics JSONL")
+    parser.add_argument(
+        "--export",
+        type=Path,
+        help="optional per-row validation prompts and diagnostic metrics JSONL; must be outside the repository",
+    )
     args = parser.parse_args()
-    rows = list(read_rows(args.prompts))
-    if not rows:
-        parser.error("empty prompts")
+    if args.raw.is_dir():
+        parser.error("--raw must be one complete, hash-pinned validation JSONL file")
+    if args.export and is_inside_repo(args.export):
+        parser.error("--export contains row-level prompts and must be outside the repository")
+    try:
+        rows = list(read_rows(args.prompts))
+        raw_rows = list(read_rows(args.raw))
+        predictions = list(read_rows(args.predictions))
+        validate_validation_inputs(args.prompts, args.raw, args.predictions, rows, raw_rows, predictions)
+    except (OSError, ValueError) as exc:
+        parser.error(str(exc))
     projects = {row["proje"] for row in rows}
-    paths = sorted(args.raw.glob("*.jsonl")) if args.raw.is_dir() else [args.raw]
-    paths = [path for path in paths if not path.name.endswith(".rapor.jsonl")]
-    raw = indexed(r for path in paths for r in read_rows(path) if r.get("proje") in projects)
-    summary, exports = simulate(rows, raw, list(read_rows(args.predictions)))
-    summary["provenance"] = {"prompts_sha256": sha256(args.prompts),
-                             "predictions_sha256": sha256(args.predictions),
-                             "raw_sha256": {path.name: sha256(path) for path in paths},
-                             "raw_nodes_loaded": len(raw)}
+    raw = indexed(row for row in raw_rows if row.get("proje") in projects)
+    summary, exports = simulate(rows, raw, predictions)
+    summary["provenance"] = {
+        "prompts_sha256": sha256(args.prompts),
+        "predictions_sha256": sha256(args.predictions),
+        "raw_sha256": {args.raw.name: sha256(args.raw)},
+        "raw_nodes_loaded": len(raw),
+    }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     if args.export:
