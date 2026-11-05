@@ -357,7 +357,7 @@ assembly, not the summaries' second-hop calls. Strongly connected components are
 processed sink-first; predictions within a recursive component become visible
 only after the entire component has been named. Gold labels and assistant answers
 are never sent to the endpoint. Missing prompt nodes are reported, not invented:
-the fixed test sample is an incomplete project graph, so a project-wide experiment
+the fixed validation sample is an incomplete project graph, so a project-wide experiment
 needs its complete prepared function corpus. Output is append-only during a run,
 and an existing output file is never overwritten. These tools do not change
 binaries or benchmark labels.
