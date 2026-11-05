@@ -1,6 +1,9 @@
 import json
+from pathlib import Path
 
 import pytest
+
+import alttan_yukari_sim as simulator
 
 from alttan_yukari import (
     components_leaf_first,
@@ -40,6 +43,122 @@ def prepared(row, context=""):
             {"role": "assistant", "content": json.dumps({"ad": row["ad"]})},
         ],
     }
+
+
+def write_jsonl(path, rows):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows),
+        encoding="utf-8",
+    )
+    return path
+
+
+def validation_fixture(tmp_path, monkeypatch):
+    source = raw("sub_0001", "p_read_file")
+    prompts = [prepared(source)]
+    raw_rows = [source]
+    predictions = [{"id": source["id"], "proje": "p", "gercek": source["ad"], "tahmin": "read_file"}]
+    prompts_path = write_jsonl(tmp_path / "inputs" / "valid_300.jsonl", prompts)
+    raw_path = write_jsonl(tmp_path / "inputs" / "dogrulama.jsonl", raw_rows)
+    predictions_path = write_jsonl(tmp_path / "inputs" / "valid300-v5.jsonl", predictions)
+
+    (tmp_path / "lora").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "rapor" / "arastirma").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "lora" / "v6_girdi_manifest.json").write_text(
+        json.dumps({"beklenen_sha256": {"valid_v6": simulator.sha256(prompts_path)}}),
+        encoding="utf-8",
+    )
+    (tmp_path / "rapor" / "arastirma" / "dogrulama_manifest.json").write_text(
+        json.dumps(
+            {
+                "tam_dogrulama_sha256": simulator.sha256(raw_path),
+                "dondurulmus_tahminler": {"v5": simulator.sha256(predictions_path)},
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(simulator, "KOK", tmp_path)
+    return prompts_path, raw_path, predictions_path, prompts, raw_rows, predictions
+
+
+def refresh_prediction_hash(tmp_path, predictions_path):
+    manifest_path = tmp_path / "rapor" / "arastirma" / "dogrulama_manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["dondurulmus_tahminler"]["v5"] = simulator.sha256(predictions_path)
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+
+def test_prediction_gold_label_mismatch_fails():
+    a = raw("sub_0001", "a")
+    prediction = {**a, "gercek": "wrong_gold", "tahmin": "valid_name"}
+    with pytest.raises(ValueError, match="gold label mismatch"):
+        simulate([prepared(a)], indexed([a]), [prediction])
+
+
+def test_validation_guard_accepts_exact_pinned_inputs(tmp_path, monkeypatch):
+    inputs = validation_fixture(tmp_path, monkeypatch)
+    simulator.validate_validation_inputs(*inputs)
+
+
+def test_validation_guard_rejects_changed_prompt_hash(tmp_path, monkeypatch):
+    inputs = validation_fixture(tmp_path, monkeypatch)
+    prompts_path = inputs[0]
+    prompts_path.write_text(prompts_path.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="prompts do not match"):
+        simulator.validate_validation_inputs(*inputs)
+
+
+def test_validation_guard_rejects_mismatched_prediction_ids(tmp_path, monkeypatch):
+    inputs = validation_fixture(tmp_path, monkeypatch)
+    prompts_path, raw_path, predictions_path, prompts, raw_rows, predictions = inputs
+    other = raw("sub_0009", "p_other")
+    changed = [{**predictions[0], "id": other["id"], "gercek": other["ad"]}]
+    write_jsonl(predictions_path, changed)
+    refresh_prediction_hash(tmp_path, predictions_path)
+    with pytest.raises(ValueError, match="identifier sets"):
+        simulator.validate_validation_inputs(prompts_path, raw_path, predictions_path, prompts, raw_rows, changed)
+
+
+def test_validation_guard_rejects_prediction_gold_mismatch(tmp_path, monkeypatch):
+    inputs = validation_fixture(tmp_path, monkeypatch)
+    prompts_path, raw_path, predictions_path, prompts, raw_rows, predictions = inputs
+    changed = [{**predictions[0], "gercek": "wrong_gold"}]
+    write_jsonl(predictions_path, changed)
+    refresh_prediction_hash(tmp_path, predictions_path)
+    with pytest.raises(ValueError, match="gold label"):
+        simulator.validate_validation_inputs(prompts_path, raw_path, predictions_path, prompts, raw_rows, changed)
+
+
+def test_validation_guard_rejects_raw_directories(tmp_path, monkeypatch):
+    inputs = validation_fixture(tmp_path, monkeypatch)
+    prompts_path, raw_path, predictions_path, prompts, raw_rows, predictions = inputs
+    raw_path.unlink()
+    raw_path.mkdir()
+    with pytest.raises(ValueError, match="one complete validation"):
+        simulator.validate_validation_inputs(prompts_path, raw_path, predictions_path, prompts, raw_rows, predictions)
+
+
+def test_row_level_export_must_stay_outside_repository(tmp_path, monkeypatch):
+    monkeypatch.setattr(simulator, "KOK", tmp_path)
+    assert simulator.is_inside_repo(tmp_path / "exports" / "validation.jsonl")
+    assert not simulator.is_inside_repo(tmp_path.parent / "validation.jsonl")
+
+
+def test_readme_bottom_up_example_is_validation_only():
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+    start = readme.index("### Bottom-up naming (no training)")
+    end = readme.index("runs leaf-first inference", start)
+    section = readme[start:end]
+    fence = chr(96) * 3
+    command = section.split(fence + "bash", 1)[1].split(fence, 1)[0]
+    assert "valid_300.jsonl" in command
+    assert "dogrulama.jsonl" in command
+    assert "test_sabit" not in section
+    assert "test2000" not in section
+    assert "eval115" not in section
+    assert "--export" not in command
+    assert "fixed validation sample" in readme[end:]
 
 
 def test_rewriting_keeps_asm_decompile_literals_and_substrings():
@@ -145,7 +264,8 @@ def test_simulator_gold_prediction_coverage_and_self_exclusion():
     a = raw("sub_0001", "p_read_file", ["sub_0002", "sub_0001"])
     b = raw("sub_0002", "p_read_buffer")
     row = prepared(a, "sub_0002 (1 komut): çağırır sub_0001")
-    summary, exports = simulate([row], indexed([a, b]), [{**b, "tahmin": "write_buffer"}])
+    prediction = {**b, "gercek": b["ad"], "tahmin": "write_buffer"}
+    summary, exports = simulate([row], indexed([a, b]), [prediction])
     assert summary["counts"]["self_symbol_slots_excluded"] == 1
     assert summary["modes"]["gold"]["macro_token_recall"] == 0.5
     assert summary["modes"]["v5_predicted"]["macro_token_recall"] == 0
@@ -156,9 +276,10 @@ def test_simulator_gold_prediction_coverage_and_self_exclusion():
 
 def test_prediction_identity_mismatch_fails():
     a = raw("sub_0001", "a")
-    changed = raw("sub_0001", "changed")
+    changed = raw("sub_0009", "changed")
+    prediction = {**changed, "gercek": changed["ad"], "tahmin": "valid_name"}
     with pytest.raises(ValueError, match="not aligned"):
-        simulate([prepared(a)], indexed([a]), [{**changed, "tahmin": "valid_name"}])
+        simulate([prepared(a)], indexed([a]), [prediction])
 
 
 @pytest.mark.parametrize("content", ['{"ad": "bad name"}', '{"ad": "sub_0001"}', '{"ad": null}'])

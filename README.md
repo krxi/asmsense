@@ -321,11 +321,22 @@ prefix-stripped target-token recall and oracle best-callee-name-copy F1; neither
 is a bound on a language model's eventual naming F1. Assembly, decompile, literal
 strings, imports and self-recursive aliases remain unchanged.
 
+The audit is restricted to three content-pinned validation inputs: the v6
+valid_300.jsonl prompts, the complete v4 validation raw JSONL, and the frozen
+v5 valid300 predictions. Their SHA-256 values are read from
+lora/v6_girdi_manifest.json and
+rapor/arastirma/dogrulama_manifest.json. The CLI rejects other splits,
+directories, mismatched prompt/prediction IDs, and gold-label or identity
+mismatches. Its default output is aggregate-only.
+
 ```bash
-python3 alttan_yukari_sim.py --prompts lora/veri-v6/test_sabit.jsonl \
-  --raw veri/olcek-v6/ham/test --predictions sonuc/test2000-molab-qwen3-8b-v5.jsonl \
-  --output /tmp/context-information.json --export /tmp/context-prompts.jsonl
+python3 alttan_yukari_sim.py --prompts /path/to/valid_300.jsonl --raw /path/to/dogrulama.jsonl --predictions /path/to/valid300-v5.jsonl --output /tmp/validation-context-information.json
 ```
+
+Optional --export writes per-row validation prompts for local follow-up only;
+the path must be outside the repository. Do not publish or commit that export.
+This simulation is CPU-only and makes no model/API call; its lexical diagnostics
+are not model-accuracy or F1 results.
 
 `alttan_yukari.py` runs leaf-first inference against an OpenAI-compatible endpoint
 serving the desired adapter (it does not load or train an adapter). Supply prepared
@@ -346,7 +357,7 @@ assembly, not the summaries' second-hop calls. Strongly connected components are
 processed sink-first; predictions within a recursive component become visible
 only after the entire component has been named. Gold labels and assistant answers
 are never sent to the endpoint. Missing prompt nodes are reported, not invented:
-the fixed test sample is an incomplete project graph, so a project-wide experiment
+the fixed validation sample is an incomplete project graph, so a project-wide experiment
 needs its complete prepared function corpus. Output is append-only during a run,
 and an existing output file is never overwritten. These tools do not change
 binaries or benchmark labels.
