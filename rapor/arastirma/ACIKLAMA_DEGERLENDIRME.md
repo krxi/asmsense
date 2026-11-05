@@ -27,8 +27,13 @@ kanonik/öneksiz ad F1 değerlendirilmelidir.
 
 ## Paket ve etiket bütünlüğü
 
-Puanlayıcı yalnız C kaynağı ve İngilizce açıklamayı görür. C içindeki işlev
-adı doğal olarak kalır; sistem/tahmin/F1/özgün ID alanları gösterilmez.
+Puanlayıcı yalnız C kaynağı ve İngilizce açıklamayı görür. Hedef işlevin
+tam tanımlayıcı yazımı kodda, yorumlarda ve string/char sabitlerinde sabit nötr
+bir adla maskelenir; diğer tanımlayıcılar ve literal içeriğinin geri kalanı
+korunur. Sistem/tahmin/F1/özgün ID alanları gösterilmez. Hedef tanımlayıcı kodda
+bulunamazsa paket oluşturulmaz. C'nin ters eğik çizgi + satır sonu birleştirmesi
+sonrasında hedef yazımı hâlâ kalıyorsa (ör. bölünmüş tanımlayıcı/literal),
+araç kısmen körlenmiş paket üretmek yerine hata verir.
 Paket değiştirilmeyen özgün JSONL'dir. Yanında üretilen etiket şablonunun
 her satırı özgün **paket baytlarının SHA-256** değerini taşır. İki puanlayıcı
 bu şablonun ayrı kopyalarını doldurur; paketi düzenlemez. Kör anahtar da aynı
@@ -68,6 +73,34 @@ kusursuz görünen uyum 1.0 kappa diye sunulmaz. Uzlaşı yoksa kalite kapılar�
 Eşli bootstrap projeleri birlikte örnekler; optimizasyon kopyaları bağımsız
 satır sayılmaz. Çoklu aday aralıkları tanısaldır; çoklu karşılaştırma düzeltmesi
 olmaksızın aday seçimi için kullanılmamalıdır.
+
+## Kaynak kataloğu kapsam ön denetimi
+
+Kör paket oluşturmadan önce, sabit valid300 havuzunun C kaynak kataloğunda
+tam olarak kapsanıp kapsanmadığı çevrimdışı denetlenebilir:
+
+```sh
+python3 aciklama_degerlendir.py kaynak-kapsami --veri ../validation-v4.jsonl --kaynak ../kaynak-v4
+```
+
+Komut ham doğrulama girdisini sabit valid300 kimlik/etiket/proje/opt dayanağına
+karşı doğrular. Tam hash-pinned v4 validation dosyasını veya sabit havuzun
+kanonik alt kümesini kabul eder; test/eval kimliklerini reddeder. Kaynak
+kataloğundaki üst dizin `*.jsonl` dosyalarını satır satır tarar ve yalnız
+toplu sayaçlar, girdi SHA-256 değerleri ve checkout commit/tree kimliklerini
+yazar. Fonksiyon kimliği, proje/dosya/ad, kaynak kodu, eksik anahtar veya
+mutlak yol yayımlanmaz.
+
+Hem 300 validation kimliği hem benzersiz (proje, dosya, kaynak işlev) anahtarı
+sayılır; aynı kaynak işlevin farklı optimizasyon satırları tek kaynak anahtarına
+katlanır. Aynı anahtar için çelişkili kaynak gövdeleri fail-closed reddedilir.
+Bu yalnız katalog kapsamı kontrolüdür; kaynak kodunun derlenmiş binary ile
+semantik eşdeğerliğini veya açıklama doğruluğunu kanıtlamaz.
+
+Sentetik testler bu sayaçları, çelişkili kayıt reddini, test kimliği reddini ve
+aggregate-only CLI çıktısını doğrular. Gerçek validation/kaynak kataloğu
+üzerinde komut bu revizyonda **not run**; insan anotasyonu, model çıkarımı ve
+benchmark puanlaması yapılmadı.
 
 ## Durum ve sınırlar
 

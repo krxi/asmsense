@@ -126,9 +126,53 @@ def test_paket_kor_ayni_fonksiyonlar_ve_hash_bagi(girdiler, tmp_path):
     for r in key["esleme"]:
         say.setdefault(r["id"], set()).add(r["sistem"])
     assert len(say) == 4 and all(s == {"a", "b"} for s in say.values())
+    assert all("__asmsense_target" in r["c_kaynagi"] for r in rs)
+    assert all("synthetic_f" not in r["c_kaynagi"] for r in rs)
     sablon = ad.jsonl_oku(paket.with_name(paket.name + ".etiket-sablonu.jsonl"))
     assert all(r["paket_sha256"] == key["paket_sha256"] for r in sablon)
     assert anahtar.stat().st_mode & 0o777 == 0o600
+
+
+def test_hedef_adi_kod_yorum_ve_literallerde_maskelenir():
+    kaynak = (
+        "/* synthetic_fn is documented */\n"
+        "int synthetic_fn(int x) { // synthetic_fn self-call\n"
+        '  const char *s = "synthetic_fn";\n'
+        "  return x ? synthetic_fn(x - 1) : s[0];\n"
+        "}\n"
+        "int synthetic_fn_helper(void);\n"
+    )
+    beklenen = (
+        "/* __asmsense_target is documented */\n"
+        "int __asmsense_target(int x) { // __asmsense_target self-call\n"
+        '  const char *s = "__asmsense_target";\n'
+        "  return x ? __asmsense_target(x - 1) : s[0];\n"
+        "}\n"
+        "int synthetic_fn_helper(void);\n"
+    )
+    assert ad.hedef_adini_maskeyle(kaynak, "synthetic_fn") == beklenen
+
+
+def test_hedef_adi_maskesi_cakisma_ve_kapsam_hatalarini_kapatir():
+    kaynak = "int synthetic_fn(void) { return __asmsense_target; }"
+    sonuc = ad.hedef_adini_maskeyle(kaynak, "synthetic_fn")
+    assert "int __asmsense_target_1(void)" in sonuc
+    assert "return __asmsense_target;" in sonuc
+    with pytest.raises(ValueError, match="C tanımlayıcısı"):
+        ad.hedef_adini_maskeyle("int other(void) { return 0; }", "bad-name")
+    with pytest.raises(ValueError, match="kaynak kodunda"):
+        ad.hedef_adini_maskeyle("/* synthetic_fn */ int other(void) { return 0; }", "synthetic_fn")
+
+
+def test_satir_birlestirmesi_hedef_adi_acikta_birakiyorsa_kapatir():
+    bolunmus = "synthetic_" + chr(92) + "\n" + "fn"
+    kaynaklar = [
+        "int synthetic_fn(void);\nint " + bolunmus + "(void) { return 0; }\n",
+        'int synthetic_fn(void) { return 0; }\nconst char *s = "' + bolunmus + '";\n',
+    ]
+    for kaynak in kaynaklar:
+        with pytest.raises(ValueError, match="satır birleştirmesi"):
+            ad.hedef_adini_maskeyle(kaynak, "synthetic_fn")
 
 
 def test_varsayilan_anahtar_repo_disinda_ve_gitignore_kurali(girdiler, tmp_path):
@@ -248,3 +292,82 @@ def test_cli_kapsam_hatasi_sayaclari_yazar_yolu_yazmaz(girdiler, capsys):
     hata = capsys.readouterr().err
     assert "beklenen=6" in hata and "mevcut=5" in hata
     assert str(veri.parent) not in hata and "Traceback" not in hata
+
+
+def test_kaynak_kapsami_yalniz_toplu_sayac_yazar(girdiler, tmp_path):
+    veri, _, kaynak = girdiler
+    kayitlar = ad.jsonl_oku(kaynak)
+    eksik = _jsonl(tmp_path / "eksik-kaynak.jsonl", kayitlar[:-1])
+
+    sonuc = ad.kaynak_kapsami_ozeti(veri, eksik)
+
+    assert sonuc["bolum"] == "valid300"
+    assert sonuc["kimlik_n"] == 6
+    assert sonuc["kimlik_kaynak_bulunan"] == 5
+    assert sonuc["kimlik_kaynak_eksik"] == 1
+    assert sonuc["benzersiz_kaynak_n"] == 6
+    assert sonuc["kaynak_bulunan"] == 5
+    assert sonuc["kaynak_eksik"] == 1
+    assert sonuc["kaynak_kapsam_orani"] == pytest.approx(5 / 6)
+    yayin = json.dumps(sonuc)
+    assert "synthetic_f" not in yayin
+    assert "int synthetic" not in yayin
+    assert str(tmp_path) not in yayin
+
+
+def test_kaynak_kapsami_celiskili_kaynaklari_reddeder(girdiler, tmp_path):
+    veri, _, kaynak = girdiler
+    kayitlar = ad.jsonl_oku(kaynak)
+    kayitlar.append({**kayitlar[0], "kaynak": "int conflicting_source(void) { return 1; }"})
+    celiskili = _jsonl(tmp_path / "celiskili.jsonl", kayitlar)
+
+    with pytest.raises(ValueError, match="çelişkili kaynak"):
+        ad.kaynak_kapsami_ozeti(veri, celiskili)
+
+
+def test_kaynak_kapsami_test_ve_eval_kimliklerini_reddeder(girdiler, tmp_path):
+    veri, _, kaynak = girdiler
+    kayitlar = ad.jsonl_oku(veri)
+    kayitlar[0]["id"] = "sentetik-test"
+    yasakli = _jsonl(tmp_path / "validation-adi-degistirilmis.jsonl", kayitlar)
+
+    with pytest.raises(ValueError, match="test veya eval115"):
+        ad.kaynak_kapsami_ozeti(yasakli, kaynak)
+
+
+def test_kaynak_kapsami_cli_sadece_aggregate_json_yazar(girdiler, capsys):
+    veri, _, kaynak = girdiler
+
+    assert ad.main(["kaynak-kapsami", "--veri", str(veri), "--kaynak", str(kaynak)]) is None
+    sonuc = json.loads(capsys.readouterr().out)
+    assert sonuc["kimlik_n"] == 6
+    assert sonuc["kaynak_bulunan"] == 6
+    yayin = json.dumps(sonuc)
+    assert "synthetic_f" not in yayin
+    assert "return" not in yayin
+    assert str(veri.parent) not in yayin
+
+
+def test_kaynak_kapsami_opt_kopyalarini_tek_kaynak_sayar(girdiler, monkeypatch, tmp_path):
+    veri, _, kaynak = girdiler
+    satirlar = ad.jsonl_oku(veri)
+    sabit, yasak = dg.dayanaklar()
+    satirlar[1]["proje"] = satirlar[0]["proje"]
+    satirlar[1]["dosya"] = satirlar[0]["dosya"]
+    satirlar[1]["ad"] = satirlar[0]["ad"]
+    sabit = dict(sabit)
+    sabit[satirlar[1]["id"]] = {
+        "gercek": satirlar[1]["ad"],
+        "proje": satirlar[1]["proje"],
+        "opt": satirlar[1]["opt"],
+    }
+    monkeypatch.setattr(dg, "dayanaklar", lambda: (sabit, yasak))
+    ayni_kaynak = _jsonl(tmp_path / "ayni-kaynak-farkli-opt.jsonl", satirlar)
+
+    sonuc = ad.kaynak_kapsami_ozeti(ayni_kaynak, kaynak)
+
+    assert sonuc["kimlik_n"] == 6
+    assert sonuc["kimlik_kaynak_bulunan"] == 6
+    assert sonuc["benzersiz_kaynak_n"] == 5
+    assert sonuc["kaynak_bulunan"] == 5
+    assert sonuc["kaynak_eksik"] == 0
