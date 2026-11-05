@@ -64,7 +64,7 @@ def ornek_araligi(istem: str) -> tuple[int, int, dict]:
     """Sistem istemindeki tek JSON örneğini bul; değerlerini dışarı çıkarma."""
     cozumleyici = json.JSONDecoder()
     bulunan = []
-    for eslesme in re.finditer(r"\\{", istem):
+    for eslesme in re.finditer(r"\{", istem):
         try:
             nesne, son = cozumleyici.raw_decode(istem[eslesme.start() :])
         except ValueError:
