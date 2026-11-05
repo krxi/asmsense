@@ -277,9 +277,7 @@ def main(argv=None) -> int:
         if args.cikti.exists():
             raise FileExistsError("çıktı zaten var; üzerine yazılmayacak")
         ozet = _json_nesnesi(args.ozet, "Özet")
-        rapor = rapor_olustur(
-            args.ozet, ozet, audit_commit=args.audit_commit, tekrar=args.tekrar, tohum=args.tohum
-        )
+        rapor = rapor_olustur(args.ozet, ozet, audit_commit=args.audit_commit, tekrar=args.tekrar, tohum=args.tohum)
         args.cikti.parent.mkdir(parents=True, exist_ok=True)
         with args.cikti.open("x", encoding="utf-8") as akim:
             json.dump(rapor, akim, ensure_ascii=False, indent=2, allow_nan=False)
