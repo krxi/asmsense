@@ -1,3 +1,7 @@
+import json
+
+import pytest
+
 from sonuc_guvencesi import jsonl_denetle, sonuc_jsonl_mi
 
 
@@ -27,6 +31,43 @@ def test_satir_duzeyindeki_alanlar_reddedilir_degerler_yazdirilmaz():
 def test_gercek_ad_alani_da_reddedilir():
     icerik = '{"id": "synthetic-id", "gercek_ad": "synthetic-gold"}\n'
     assert jsonl_denetle("sonuc/test-sentetik.jsonl", icerik)
+
+
+@pytest.mark.parametrize(
+    "alan",
+    [
+        "prediction",
+        "gold",
+        "function",
+        "function_name",
+        "function_id",
+        "address",
+        "target",
+        "prompt",
+        "completion",
+        "decompile",
+        "pseudocode",
+        "project",
+        "gerekce_en",
+        "puan_en",
+    ],
+)
+def test_ingilizce_ve_aciklama_aliaslari_reddedilir(alan):
+    icerik = json.dumps({alan: "synthetic-value"}) + "\n"
+    hatalar = jsonl_denetle("sonuc/test-sentetik.jsonl", icerik)
+    assert len(hatalar) == 1
+    assert "synthetic-value" not in hatalar[0]
+
+
+def test_ic_ice_nesne_ve_listelerde_satir_duzeyi_alan_reddedilir():
+    icerik = json.dumps({"aggregate": {"n": 1}, "records": [{"metadata": {"Prediction": "synthetic"}}]}) + "\n"
+    hatalar = jsonl_denetle("sonuc/test-sentetik.jsonl", icerik)
+    assert len(hatalar) == 1
+
+
+def test_ic_ice_aggregate_ozet_kaydi_gecer():
+    icerik = json.dumps({"n": 115, "metrics": {"f1": 0.12}, "model": "synthetic-model"}) + "\n"
+    assert jsonl_denetle("sonuc/eval115-ozet.jsonl", icerik) == []
 
 
 def test_hatalı_jsonl_fail_closed():

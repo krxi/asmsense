@@ -10,13 +10,59 @@ from pathlib import Path, PurePosixPath
 from typing import Optional
 
 
-SATIR_DUZEYI_ALANLARI = ("id", "gercek", "gercek_ad", "tahmin", "asm", "assembly", "source", "kaynak")
+SATIR_DUZEYI_ALANLARI = frozenset(
+    {
+        "id",
+        "gercek",
+        "gercek_ad",
+        "tahmin",
+        "asm",
+        "assembly",
+        "source",
+        "kaynak",
+        "anahtar",
+        "gerekce_en",
+        "gerekce_tr",
+        "puan_en",
+        "puan_tr",
+        "ogretmen",
+        "proje",
+        "project",
+        "opt",
+        "token",
+        "aciklama",
+        "aciklama_en",
+        "function",
+        "function_name",
+        "function_id",
+        "address",
+        "target",
+        "prediction",
+        "gold",
+        "prompt",
+        "completion",
+        "decompile",
+        "pseudocode",
+    }
+)
 
 
 def sonuc_jsonl_mi(yol: str) -> bool:
     """sonuc/ altındaki JSONL sonuç dosyalarını seçer."""
     parca = PurePosixPath(yol)
     return len(parca.parts) >= 2 and parca.parts[0] == "sonuc" and parca.suffix.lower() == ".jsonl"
+
+
+def satir_duzeyi_alan_var(kayit: object) -> bool:
+    """Satır düzeyindeki alanları iç içe nesne/listelerde de bulur."""
+    if isinstance(kayit, dict):
+        anahtarlar = {alan.casefold() for alan in kayit if isinstance(alan, str)}
+        if anahtarlar & SATIR_DUZEYI_ALANLARI:
+            return True
+        return any(satir_duzeyi_alan_var(deger) for deger in kayit.values())
+    if isinstance(kayit, list):
+        return any(satir_duzeyi_alan_var(deger) for deger in kayit)
+    return False
 
 
 def jsonl_denetle(yol: str, icerik: str) -> list[str]:
@@ -36,7 +82,7 @@ def jsonl_denetle(yol: str, icerik: str) -> list[str]:
         if not isinstance(kayit, dict):
             hatalar.append(f"{yol}:{satir_no}: JSONL kaydı nesne olmalı.")
             continue
-        if any(alan in kayit for alan in SATIR_DUZEYI_ALANLARI):
+        if satir_duzeyi_alan_var(kayit):
             hatalar.append(f"{yol}:{satir_no}: satır düzeyinde kimlik, ad, tahmin veya kaynak içeren sonuç yasak.")
     return hatalar
 
