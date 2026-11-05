@@ -89,7 +89,7 @@ def hazirla(tmp_path, monkeypatch):
 
 
 def test_proje_bootstrap_esli_ve_deterministik(tmp_path, monkeypatch):
-    _, ozet_yolu, audit_commit = hazirla(tmp_path, monkeypatch)
+    kok, ozet_yolu, audit_commit = hazirla(tmp_path, monkeypatch)
     ozet = json.loads(ozet_yolu.read_text(encoding="utf-8"))
 
     ilk = bootstrap.rapor_olustur(ozet_yolu, ozet, audit_commit=audit_commit, tekrar=500, tohum=42)
@@ -97,6 +97,11 @@ def test_proje_bootstrap_esli_ve_deterministik(tmp_path, monkeypatch):
 
     assert ilk == ikinci
     assert ilk["audit_commit"] == audit_commit
+    assert ilk["audit_tree"] == subprocess.check_output(
+        ["git", "rev-parse", "--verify", audit_commit + "^{tree}"], cwd=kok, text=True
+    ).strip()
+    assert ilk["audit_simulator_sha256"] == bootstrap.sha256(kok / "alttan_yukari_sim.py")
+    assert ilk["audit_provenance"] == "clean_tracked_head_operator_attestation"
     assert ilk["n_projects"] == 3
     assert ilk["n_rows"] == 300
     assert ilk["comparisons"]["gold_minus_anonymised_macro_token_recall"]["estimate"] == 0.35
@@ -182,6 +187,26 @@ def test_audit_commit_depo_gecmisinde_olmali(tmp_path, monkeypatch):
 
     with pytest.raises(ValueError, match="audit commit depoda"):
         bootstrap.rapor_olustur(ozet_yolu, ozet, audit_commit="0" * 40, tekrar=100)
+
+
+def test_audit_commit_mevcut_head_olmali(tmp_path, monkeypatch):
+    kok, ozet_yolu, audit_commit = hazirla(tmp_path, monkeypatch)
+    (kok / "sonraki.txt").write_text("sonraki\n", encoding="utf-8")
+    subprocess.run(["git", "add", "sonraki.txt"], cwd=kok, check=True)
+    subprocess.run(["git", "commit", "-m", "sonraki audit"], cwd=kok, check=True, capture_output=True)
+    ozet = json.loads(ozet_yolu.read_text(encoding="utf-8"))
+
+    with pytest.raises(ValueError, match="mevcut HEAD ile eşleşmeli"):
+        bootstrap.rapor_olustur(ozet_yolu, ozet, audit_commit=audit_commit, tekrar=100)
+
+
+def test_audit_takipli_calisma_agaci_temiz_olmali(tmp_path, monkeypatch):
+    kok, ozet_yolu, audit_commit = hazirla(tmp_path, monkeypatch)
+    (kok / "alttan_yukari_sim.py").write_text("# değiştirilmiş\n", encoding="utf-8")
+    ozet = json.loads(ozet_yolu.read_text(encoding="utf-8"))
+
+    with pytest.raises(ValueError, match="takipli çalışma ağacı temiz"):
+        bootstrap.rapor_olustur(ozet_yolu, ozet, audit_commit=audit_commit, tekrar=100)
 
 
 def test_gecersiz_bootstrap_parametreleri_reddedilir():
