@@ -42,7 +42,7 @@ jobs:
             onceki=$ONCEKI
           fi
           {
-            printf '%s\n' conftest.py iki_f1.py onek_denetim.py
+            printf '%s\n' conftest.py iki_f1.py onek_denetim.py sonuc_guvencesi.py sonuc_envanteri.py
             git ls-files 'tests/*.py'
             if [ -n "$taban" ]; then git diff --name-only --diff-filter=A "$taban" HEAD -- '*.py'; fi
             if [ -n "$onceki" ]; then git diff --name-only --diff-filter=A "$onceki" HEAD -- '*.py'; fi
@@ -50,6 +50,30 @@ jobs:
           cat "$RUNNER_TEMP/ruff-dosyalar"
       - run: xargs ruff check < "$RUNNER_TEMP/ruff-dosyalar"
       - run: xargs ruff format --check --diff < "$RUNNER_TEMP/ruff-dosyalar"
+      - name: Satır düzeyinde sonuç JSONL güvencesi
+        env:
+          GUARD_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -eu
+          taban="${GUARD_BASE:-}"
+          if [ -z "$taban" ] || [ "$taban" = 0000000000000000000000000000000000000000 ] \
+            || ! git cat-file -e "$taban^{commit}" 2>/dev/null; then
+            git fetch -q origin main
+            taban=$(git merge-base HEAD origin/main)
+          fi
+          python sonuc_guvencesi.py --base "$taban" --head HEAD
+      - name: Tarihsel sonuç JSONL şema envanteri (bilgilendirici)
+        env:
+          ENVANTER_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -eu
+          ref="${ENVANTER_REF:-}"
+          if [ -z "$ref" ] || [ "$ref" = 0000000000000000000000000000000000000000 ] \
+            || ! git cat-file -e "$ref^{commit}" 2>/dev/null; then
+            git fetch -q origin main
+            ref=$(git rev-parse origin/main)
+          fi
+          python sonuc_envanteri.py --ref "$ref"
 
   birim:
     name: pytest + duman (Python ${{ matrix.python }})
