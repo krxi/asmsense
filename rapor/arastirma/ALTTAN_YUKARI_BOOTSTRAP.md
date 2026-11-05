@@ -50,12 +50,20 @@ python3 alttan_yukari_sim.py \
   --output /tmp/bottom-up-summary.json
 ```
 
+Simülasyon komutunu çalıştırdığınız commit'i kaydedin:
+
+```sh
+AUDIT_COMMIT=$(git rev-parse HEAD)
+```
+
 Ardından yalnız aggregate özeti kullanın:
 
 ```sh
 python3 alttan_yukari_bootstrap.py \
   --ozet /tmp/bottom-up-summary.json \
-  --cikti /tmp/bottom-up-bootstrap.json
+  --cikti /tmp/bottom-up-bootstrap.json \\
+  --audit-commit "$AUDIT_COMMIT" \\
+  --tekrar 2000 --tohum 42
 ```
 
 `--audit-commit`, simülasyonu üreten commit'tir; araç commit'in geçerli olduğunu ve bu commit'te `alttan_yukari_sim.py` bulunduğunu doğrular. Rapor bu commit'i kaydeder. Varsayılanlar 2.000 tekrar ve seed 42'dir; komut bunları açıkça sabitler. Farklı bir yöntem önceden belirlenirse `--tekrar` ve `--tohum` değiştirilebilir. Çıktı depo dışında olmalı ve mevcut dosyanın üzerine yazılmaz.
