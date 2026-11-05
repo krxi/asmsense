@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bottom-up doğrulama deneyi için yalnız iki sabit validation girdisini indir."""
+"""Bottom-up doğrulama deneyi için yalnız üç sabit validation girdisini indir."""
 
 import argparse
 import ctypes
@@ -35,6 +35,16 @@ V4_HAM_SHA256 = "7516244ec1798b05f6c3ef09fbfb4636241b5dd6bbfd8b6814ad340b6f1beef
 V4_SATIR = 19770
 V4_GZIP_TAVAN = 8 * 1024 * 1024
 V4_HAM_TAVAN = 128 * 1024 * 1024
+
+V5_KAYNAK_COMMIT = "15e3b28f1be387d0e8655edd838e1c32f9d348d5"
+V5_TAHMIN_URL = (
+    "https://raw.githubusercontent.com/krxi/asmsense/"
+    + V5_KAYNAK_COMMIT
+    + "/sonuc/valid300-molab-qwen3-8b-v5.jsonl"
+)
+V5_TAHMIN_SHA256 = "88f7bfb32ed87f5c43a43d670c5ca5e80bfd00c3592d59dc24b9ee52e14e4faf"
+V5_TAHMIN_SATIR = 300
+V5_TAHMIN_TAVAN = 16 * 1024 * 1024
 
 
 def sha256(veri: bytes) -> str:
@@ -104,6 +114,16 @@ def v4_validation_ac(gzip_veri: bytes) -> bytes:
     return ham
 
 
+def v5_tahminleri_dogrula(veri: bytes) -> bytes:
+    if len(veri) > V5_TAHMIN_TAVAN:
+        raise ValueError("v5 valid300 tahmin dosyası boyut sınırını aşıyor")
+    if sha256(veri) != V5_TAHMIN_SHA256:
+        raise ValueError("v5 valid300 tahmin SHA-256 sabit manifestle uyuşmuyor")
+    if satir_sayisi(veri) != V5_TAHMIN_SATIR:
+        raise ValueError("v5 valid300 tahmin satır sayısı sabit manifestle uyuşmuyor")
+    return veri
+
+
 def ozel_yaz(yol: Path, veri: bytes) -> None:
     fd = os.open(str(yol), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "wb") as dosya:
@@ -161,11 +181,14 @@ def indir_dogrulama(cikti_dir: Path) -> Dict[str, object]:
     ham = v4_validation_ac(v4_gzip)
     del v4_gzip
 
+    v5_tahminleri = v5_tahminleri_dogrula(indir(V5_TAHMIN_URL, V5_TAHMIN_TAVAN))
+
     hedef.parent.mkdir(parents=True, exist_ok=True)
     gecici = Path(tempfile.mkdtemp(prefix="." + hedef.name + ".", dir=str(hedef.parent)))
     try:
         ozel_yaz(gecici / "valid_300-v6.jsonl", valid)
         ozel_yaz(gecici / "validation-v4.jsonl", ham)
+        ozel_yaz(gecici / "valid300-v5-predictions.jsonl", v5_tahminleri)
         manifest = {
             "sema": 1,
             "bolum": "valid300",
@@ -173,10 +196,16 @@ def indir_dogrulama(cikti_dir: Path) -> Dict[str, object]:
                 "v6_arsiv_sha256": V6_ARSIV_SHA256,
                 "v4_hf_rev": V4_REVIZYON,
                 "v4_ham_sha256": V4_HAM_SHA256,
+                "v5_kaynak_commit": V5_KAYNAK_COMMIT,
+                "v5_tahmin_sha256": V5_TAHMIN_SHA256,
             },
             "artefaktlar": {
                 "valid_300-v6.jsonl": {"satir": V6_VALID_SATIR, "sha256": sha256(valid)},
                 "validation-v4.jsonl": {"satir": V4_SATIR, "sha256": sha256(ham)},
+                "valid300-v5-predictions.jsonl": {
+                    "satir": V5_TAHMIN_SATIR,
+                    "sha256": sha256(v5_tahminleri),
+                },
             },
             "test_uyesi_acildi": 0,
             "gpu": "not used",

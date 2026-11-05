@@ -24,6 +24,7 @@ def zip_yap(dosyalar):
 def test_yalniz_valid300_uyesi_ayiklanir(monkeypatch, tmp_path):
     valid = b'{"id":"sentetik-1"}\n{"id":"sentetik-2"}\n'
     ham = b'{"id":"raw-1"}\n{"id":"raw-2"}\n'
+    tahminler = b'{"id":"pred-1"}\n{"id":"pred-2"}\n'
     arsiv = zip_yap(
         {
             "train.jsonl": b"train-only-sentinel\n",
@@ -46,9 +47,15 @@ def test_yalniz_valid300_uyesi_ayiklanir(monkeypatch, tmp_path):
     monkeypatch.setattr(ind, "V6_VALID_SATIR", 2)
     monkeypatch.setattr(ind, "V4_HAM_SHA256", sha(ham))
     monkeypatch.setattr(ind, "V4_SATIR", 2)
+    monkeypatch.setattr(ind, "V5_TAHMIN_SHA256", sha(tahminler))
+    monkeypatch.setattr(ind, "V5_TAHMIN_SATIR", 2)
 
     def fake_indir(url, tavan):
-        return arsiv if url == ind.V6_URL else sikistirilmis
+        if url == ind.V6_URL:
+            return arsiv
+        if url == ind.V4_URL:
+            return sikistirilmis
+        return tahminler
 
     monkeypatch.setattr(ind, "indir", fake_indir)
     hedef = tmp_path / "validation-artifacts"
@@ -56,14 +63,17 @@ def test_yalniz_valid300_uyesi_ayiklanir(monkeypatch, tmp_path):
 
     assert (hedef / "valid_300-v6.jsonl").read_bytes() == valid
     assert (hedef / "validation-v4.jsonl").read_bytes() == ham
+    assert (hedef / "valid300-v5-predictions.jsonl").read_bytes() == tahminler
     assert sorted(p.name for p in hedef.iterdir()) == [
         "manifest.json",
+        "valid300-v5-predictions.jsonl",
         "valid_300-v6.jsonl",
         "validation-v4.jsonl",
     ]
     assert acilanlar == ["nested/valid_300.jsonl"]
     assert manifest["test_uyesi_acildi"] == 0
     assert manifest["artefaktlar"]["valid_300-v6.jsonl"]["satir"] == 2
+    assert manifest["artefaktlar"]["valid300-v5-predictions.jsonl"]["satir"] == 2
     manifest_text = (hedef / "manifest.json").read_text(encoding="utf-8")
     assert "held-out-sentinel" not in manifest_text
     assert "sentetik-1" not in manifest_text
@@ -108,6 +118,22 @@ def test_v4_gzip_hash_ve_satir_sayisi_dogrulanir(monkeypatch):
     monkeypatch.setattr(ind, "V4_HAM_SHA256", "0" * 64)
     with pytest.raises(ValueError, match="v4 validation SHA-256"):
         ind.v4_validation_ac(gzip.compress(ham))
+
+
+def test_v5_tahmin_hash_ve_satir_sayisi_dogrulanir(monkeypatch):
+    tahminler = b'{"id":"sentetik-1"}\n{"id":"sentetik-2"}\n'
+    monkeypatch.setattr(ind, "V5_TAHMIN_SHA256", sha(tahminler))
+    monkeypatch.setattr(ind, "V5_TAHMIN_SATIR", 2)
+    assert ind.v5_tahminleri_dogrula(tahminler) == tahminler
+
+    monkeypatch.setattr(ind, "V5_TAHMIN_SHA256", "0" * 64)
+    with pytest.raises(ValueError, match="v5 valid300 tahmin SHA-256"):
+        ind.v5_tahminleri_dogrula(tahminler)
+
+    monkeypatch.setattr(ind, "V5_TAHMIN_SHA256", sha(tahminler))
+    monkeypatch.setattr(ind, "V5_TAHMIN_SATIR", 3)
+    with pytest.raises(ValueError, match="satır sayısı sabit manifestle uyuşmuyor"):
+        ind.v5_tahminleri_dogrula(tahminler)
 
 
 def test_cikti_repo_ici_reddedilir(tmp_path):
@@ -168,6 +194,7 @@ def test_indir_boyut_tavanini_asinca_durdurur(monkeypatch):
 def test_kontrol_sirasinda_bos_hedef_olusturulursa_uzerine_yazilmaz(monkeypatch, tmp_path):
     valid = b'{"id":"sentetik"}\n'
     ham = b'{"id":"raw-sentetik"}\n'
+    tahminler = b'{"id":"pred-sentetik"}\n'
     arsiv = zip_yap({"valid_300.jsonl": valid})
     sikistirilmis = gzip.compress(ham)
     monkeypatch.setattr(ind, "KOK", tmp_path / "repo")
@@ -176,7 +203,13 @@ def test_kontrol_sirasinda_bos_hedef_olusturulursa_uzerine_yazilmaz(monkeypatch,
     monkeypatch.setattr(ind, "V6_VALID_SATIR", 1)
     monkeypatch.setattr(ind, "V4_HAM_SHA256", sha(ham))
     monkeypatch.setattr(ind, "V4_SATIR", 1)
-    monkeypatch.setattr(ind, "indir", lambda url, _tavan: arsiv if url == ind.V6_URL else sikistirilmis)
+    monkeypatch.setattr(ind, "V5_TAHMIN_SHA256", sha(tahminler))
+    monkeypatch.setattr(ind, "V5_TAHMIN_SATIR", 1)
+    monkeypatch.setattr(
+        ind,
+        "indir",
+        lambda url, _tavan: arsiv if url == ind.V6_URL else sikistirilmis if url == ind.V4_URL else tahminler,
+    )
 
     asil_yayin = ind.atomik_yeniden_adlandir
     hedef = tmp_path / "validation-artifacts"
