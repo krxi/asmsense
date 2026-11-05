@@ -127,9 +127,7 @@ def test_validation_guard_rejects_prediction_gold_mismatch(tmp_path, monkeypatch
     write_jsonl(predictions_path, changed)
     refresh_prediction_hash(tmp_path, predictions_path)
     with pytest.raises(ValueError, match="gold label"):
-        simulator.validate_validation_inputs(
-            prompts_path, raw_path, predictions_path, prompts, raw_rows, changed
-        )
+        simulator.validate_validation_inputs(prompts_path, raw_path, predictions_path, prompts, raw_rows, changed)
 
 
 def test_validation_guard_rejects_raw_directories(tmp_path, monkeypatch):
