@@ -104,9 +104,9 @@ def test_proje_bootstrap_esli_ve_deterministik(tmp_path, monkeypatch):
         0.116666667
     )
     assert ilk["comparisons"]["coverage_matched_gold_minus_anonymised_macro_token_recall"]["estimate"] == 0.25
-    assert ilk["comparisons"]["coverage_matched_gold_minus_v5_predicted_macro_token_recall"]["estimate"] == pytest.approx(
-        0.133333333
-    )
+    assert ilk["comparisons"]["coverage_matched_gold_minus_v5_predicted_macro_token_recall"][
+        "estimate"
+    ] == pytest.approx(0.133333333)
     assert ilk["comparisons"]["gold_minus_coverage_matched_gold_macro_token_recall"]["estimate"] == 0.10
     for sonuc in ilk["comparisons"].values():
         assert sonuc["n_projects"] == 3
