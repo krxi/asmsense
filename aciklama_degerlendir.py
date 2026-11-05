@@ -165,6 +165,12 @@ def hedef_adini_maskeyle(kaynak, ad):
     maskeli, adet = desen.subn(yer_tutucu, kaynak)
     if adet == 0:
         raise ValueError("Hedef C tanımlayıcısı kaynak paketinde maskelenemedi")
+
+    # C'nin 2. çeviri aşaması ters eğik çizgi + satır sonunu siler.
+    # Böylece bölünmüş bir tanımlayıcı da denetimde yeniden birleşir.
+    birlesmis = re.sub(r"\\(?:\r\n|\n|\r)", "", maskeli)
+    if desen.search(birlesmis) is not None:
+        raise ValueError("Hedef C tanımlayıcısı satır birleştirmesi sonrasında maskesiz kaldı")
     return maskeli
 
 
