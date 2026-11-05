@@ -1,5 +1,6 @@
 # Optional GPU inference only; CPU tests and plan mode need no extra packages.
-# Use the recorded baseline versions for the measured protocol.
+# CUDA 13.0 wheel source matches the recorded baseline runtime.
+--extra-index-url https://download.pytorch.org/whl/cu130
 transformers==5.3.0
 accelerate>=1.12,<2
-torch>=2.6,<3
+torch==2.11.0
