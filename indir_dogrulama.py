@@ -37,11 +37,7 @@ V4_GZIP_TAVAN = 8 * 1024 * 1024
 V4_HAM_TAVAN = 128 * 1024 * 1024
 
 V5_KAYNAK_COMMIT = "15e3b28f1be387d0e8655edd838e1c32f9d348d5"
-V5_TAHMIN_URL = (
-    "https://raw.githubusercontent.com/krxi/asmsense/"
-    + V5_KAYNAK_COMMIT
-    + "/sonuc/valid300-molab-qwen3-8b-v5.jsonl"
-)
+V5_TAHMIN_URL = "https://raw.githubusercontent.com/krxi/asmsense/" + V5_KAYNAK_COMMIT + "/sonuc/valid300-molab-qwen3-8b-v5.jsonl"
 V5_TAHMIN_SHA256 = "88f7bfb32ed87f5c43a43d670c5ca5e80bfd00c3592d59dc24b9ee52e14e4faf"
 V5_TAHMIN_SATIR = 300
 V5_TAHMIN_TAVAN = 16 * 1024 * 1024
