@@ -292,3 +292,58 @@ def test_cli_kapsam_hatasi_sayaclari_yazar_yolu_yazmaz(girdiler, capsys):
     hata = capsys.readouterr().err
     assert "beklenen=6" in hata and "mevcut=5" in hata
     assert str(veri.parent) not in hata and "Traceback" not in hata
+
+
+
+def test_kaynak_kapsami_yalniz_toplu_sayac_yazar(girdiler, tmp_path):
+    veri, _, kaynak = girdiler
+    kayitlar = ad.jsonl_oku(kaynak)
+    eksik = _jsonl(tmp_path / "eksik-kaynak.jsonl", kayitlar[:-1])
+
+    sonuc = ad.kaynak_kapsami_ozeti(veri, eksik)
+
+    assert sonuc["bolum"] == "valid300"
+    assert sonuc["kimlik_n"] == 6
+    assert sonuc["kimlik_kaynak_bulunan"] == 5
+    assert sonuc["kimlik_kaynak_eksik"] == 1
+    assert sonuc["benzersiz_kaynak_n"] == 6
+    assert sonuc["kaynak_bulunan"] == 5
+    assert sonuc["kaynak_eksik"] == 1
+    assert sonuc["kaynak_kapsam_orani"] == pytest.approx(5 / 6)
+    yayin = json.dumps(sonuc)
+    assert "synthetic_f" not in yayin
+    assert "int synthetic" not in yayin
+    assert str(tmp_path) not in yayin
+
+
+def test_kaynak_kapsami_celiskili_kaynaklari_reddeder(girdiler, tmp_path):
+    veri, _, kaynak = girdiler
+    kayitlar = ad.jsonl_oku(kaynak)
+    kayitlar.append({**kayitlar[0], "kaynak": "int conflicting_source(void) { return 1; }"})
+    celiskili = _jsonl(tmp_path / "celiskili.jsonl", kayitlar)
+
+    with pytest.raises(ValueError, match="çelişkili kaynak"):
+        ad.kaynak_kapsami_ozeti(veri, celiskili)
+
+
+def test_kaynak_kapsami_test_ve_eval_kimliklerini_reddeder(girdiler, tmp_path):
+    veri, _, kaynak = girdiler
+    kayitlar = ad.jsonl_oku(veri)
+    kayitlar[0]["id"] = "sentetik-test"
+    yasakli = _jsonl(tmp_path / "validation-adi-degistirilmis.jsonl", kayitlar)
+
+    with pytest.raises(ValueError, match="test veya eval115"):
+        ad.kaynak_kapsami_ozeti(yasakli, kaynak)
+
+
+def test_kaynak_kapsami_cli_sadece_aggregate_json_yazar(girdiler, capsys):
+    veri, _, kaynak = girdiler
+
+    assert ad.main(["kaynak-kapsami", "--veri", str(veri), "--kaynak", str(kaynak)]) is None
+    sonuc = json.loads(capsys.readouterr().out)
+    assert sonuc["kimlik_n"] == 6
+    assert sonuc["kaynak_bulunan"] == 6
+    yayin = json.dumps(sonuc)
+    assert "synthetic_f" not in yayin
+    assert "return" not in yayin
+    assert str(veri.parent) not in yayin
