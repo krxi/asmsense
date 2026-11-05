@@ -164,6 +164,17 @@ def test_hedef_adi_maskesi_cakisma_ve_kapsam_hatalarini_kapatir():
         ad.hedef_adini_maskeyle("/* synthetic_fn */ int other(void) { return 0; }", "synthetic_fn")
 
 
+def test_satir_birlestirmesi_hedef_adi_acikta_birakiyorsa_kapatir():
+    bolunmus = "synthetic_" + chr(92) + "\n" + "fn"
+    kaynaklar = [
+        "int synthetic_fn(void);\nint " + bolunmus + "(void) { return 0; }\n",
+        'int synthetic_fn(void) { return 0; }\nconst char *s = "' + bolunmus + '";\n',
+    ]
+    for kaynak in kaynaklar:
+        with pytest.raises(ValueError, match="satır birleştirmesi"):
+            ad.hedef_adini_maskeyle(kaynak, "synthetic_fn")
+
+
 def test_varsayilan_anahtar_repo_disinda_ve_gitignore_kurali(girdiler, tmp_path):
     veri, tahminler, kaynak = girdiler
     m, ids, gs = ad.plan_hazirla(veri, tahminler, 2, 42)
