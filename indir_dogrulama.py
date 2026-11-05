@@ -2,12 +2,15 @@
 """Bottom-up doğrulama deneyi için yalnız iki sabit validation girdisini indir."""
 
 import argparse
+import ctypes
+import errno
 import gzip
 import hashlib
 import io
 import json
 import os
 import shutil
+import sys
 import tempfile
 import urllib.error
 import urllib.request
@@ -109,6 +112,39 @@ def ozel_yaz(yol: Path, veri: bytes) -> None:
         os.fsync(dosya.fileno())
 
 
+def atomik_yeniden_adlandir(kaynak: Path, hedef: Path) -> None:
+    """Hedef varsa onu değiştirmeden staging dizinini yayımla."""
+    libc = ctypes.CDLL(None, use_errno=True)
+    if sys.platform.startswith("linux"):
+        fonksiyon = getattr(libc, "renameat2", None)
+        if fonksiyon is None:
+            raise OSError(errno.ENOTSUP, "renameat2 desteklenmiyor", str(hedef))
+        fonksiyon.argtypes = [
+            ctypes.c_int,
+            ctypes.c_char_p,
+            ctypes.c_int,
+            ctypes.c_char_p,
+            ctypes.c_uint,
+        ]
+        fonksiyon.restype = ctypes.c_int
+        sonuc = fonksiyon(-100, os.fsencode(kaynak), -100, os.fsencode(hedef), 0x00000001)
+    elif sys.platform == "darwin":
+        fonksiyon = getattr(libc, "renamex_np", None)
+        if fonksiyon is None:
+            raise OSError(errno.ENOTSUP, "renamex_np desteklenmiyor", str(hedef))
+        fonksiyon.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint]
+        fonksiyon.restype = ctypes.c_int
+        sonuc = fonksiyon(os.fsencode(kaynak), os.fsencode(hedef), 0x00000004)
+    else:
+        raise OSError(errno.ENOTSUP, "Atomik no-clobber yayın bu platformda desteklenmiyor", str(hedef))
+
+    if sonuc != 0:
+        hata = ctypes.get_errno()
+        if hata in (errno.EEXIST, errno.ENOTEMPTY):
+            raise FileExistsError(hata, os.strerror(hata), str(hedef))
+        raise OSError(hata, os.strerror(hata), str(hedef))
+
+
 def indir_dogrulama(cikti_dir: Path) -> Dict[str, object]:
     hedef = repo_disinda(cikti_dir)
     if hedef.exists():
@@ -150,9 +186,9 @@ def indir_dogrulama(cikti_dir: Path) -> Dict[str, object]:
             gecici / "manifest.json",
             (json.dumps(manifest, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8"),
         )
-        if hedef.exists():
-            raise FileExistsError("Çıktı dizini indirme sırasında oluşturuldu; üzerine yazılmadı")
-        os.rename(str(gecici), str(hedef))
+        # Ön kontrol tek başına yarış koşulunu kapatmaz: hedef boş dizin olarak
+        # bu arada oluşturulabilir. Platformun no-replace rename işlemi atomiktir.
+        atomik_yeniden_adlandir(gecici, hedef)
     except Exception:
         shutil.rmtree(gecici, ignore_errors=True)
         raise
