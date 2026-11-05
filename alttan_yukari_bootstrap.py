@@ -18,9 +18,12 @@ VARSAYILAN_TOHUM = 42
 OLCUT = "macro_token_recall"
 KARSILASTIRMALAR = (
     ("gold_minus_anonymised_macro_token_recall", "gold", "anonymised"),
+    ("coverage_matched_gold_minus_anonymised_macro_token_recall", "gold_prediction_coverage", "anonymised"),
     ("v5_predicted_minus_anonymised_macro_token_recall", "v5_predicted", "anonymised"),
+    ("coverage_matched_gold_minus_v5_predicted_macro_token_recall", "gold_prediction_coverage", "v5_predicted"),
+    ("gold_minus_coverage_matched_gold_macro_token_recall", "gold", "gold_prediction_coverage"),
 )
-KIPLER = ("anonymised", "gold", "v5_predicted")
+KIPLER = ("anonymised", "gold", "v5_predicted", "gold_prediction_coverage")
 
 
 def sha256(yol: Path) -> str:
