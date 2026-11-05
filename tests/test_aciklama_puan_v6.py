@@ -43,6 +43,7 @@ def test_ozet_hakem_hatalarini_kapsamdan_silmeden_ayri_gosterir(tmp_path):
     assert en["tam_karar_dogru_orani"] == pytest.approx(1 / 3)
     assert en["tam_karar_kismen_orani"] == pytest.approx(1 / 3)
     assert en["tam_karar_yanlis_orani"] == pytest.approx(1 / 3)
+    assert en["yanlis_orani"] == 0.25
     assert en["v5_dogru_orani"] == 0.5
     assert en["v5_tam_karar_dogru_orani"] == pytest.approx(2 / 3)
     assert en["v5_hata"] == 1
