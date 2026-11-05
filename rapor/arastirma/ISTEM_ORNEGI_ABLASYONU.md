@@ -38,8 +38,8 @@ satırları, assistant hedefleri, scorer ve veri şeması değişmez. İki kolda
 yalnız ilk iki mesaj modele verilir; validation hedef mesajı prompt'a eklenmez.
 
 Girdi, v6 release'indeki 300 satırlık `valid_300.jsonl` olmalıdır. Betik
-`lora/v6_girdi_manifest.json` içindeki `valid` SHA-256 değerini doğrular,
-satırları `lora/v6_dogrulama.py::sema_dogrula` ile denetler ve tam 300 benzersiz
+[`lora/v6_girdi_manifest.json`](../../lora/v6_girdi_manifest.json) içindeki `valid` SHA-256 değerini doğrular,
+satırları [`lora/v6_dogrulama.py`](../../lora/v6_dogrulama.py)::`sema_dogrula` ile denetler ve tam 300 benzersiz
 kimlik ister. Dosya adıyla split seçilmez. Beklenen `valid` dosya SHA-256 değeri `45ed0960b03453f6a2eb45a118cc68bff3ff50ae22afec1849d023633dea90ad`'dır. Başka dosya, test/eval115 dahil,
 hash uyuşmadığı için reddedilir.
 
