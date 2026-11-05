@@ -58,14 +58,14 @@ def hazirla(tmp_path, monkeypatch):
             "dondurulmus_tahminler": {"v5": HASHLER["predictions"]},
         },
     )
-    monkeypatch.setattr(bootstrap, "KOK", kok)
-    (kok / "alttan_yukari_sim.py").write_text("# sentetik denetim araci\\n", encoding="utf-8")
+    (kok / "alttan_yukari_sim.py").write_text("# sentetik denetim araci\n", encoding="utf-8")
     subprocess.run(["git", "init"], cwd=kok, check=True, capture_output=True)
     subprocess.run(["git", "config", "user.email", "tests@example.invalid"], cwd=kok, check=True)
     subprocess.run(["git", "config", "user.name", "Asmsense Tests"], cwd=kok, check=True)
     subprocess.run(["git", "add", "."], cwd=kok, check=True)
     subprocess.run(["git", "commit", "-m", "sentetik audit"], cwd=kok, check=True, capture_output=True)
     audit_commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=kok, text=True).strip()
+    monkeypatch.setattr(bootstrap, "KOK", kok)
     ozet_yolu = yaz_json(tmp_path / "bottom-up-summary.json", sentetik_ozet())
     return kok, ozet_yolu, audit_commit
 
@@ -75,9 +75,10 @@ def test_proje_bootstrap_esli_ve_deterministik(tmp_path, monkeypatch):
     ozet = json.loads(ozet_yolu.read_text(encoding="utf-8"))
 
     ilk = bootstrap.rapor_olustur(ozet_yolu, ozet, audit_commit=audit_commit, tekrar=500, tohum=42)
-    ikinci = bootstrap.rapor_olustur(ozet_yolu, ozet, tekrar=500, tohum=42)
+    ikinci = bootstrap.rapor_olustur(ozet_yolu, ozet, audit_commit=audit_commit, tekrar=500, tohum=42)
 
     assert ilk == ikinci
+    assert ilk["audit_commit"] == audit_commit
     assert ilk["n_projects"] == 3
     assert ilk["n_rows"] == 300
     assert ilk["comparisons"]["gold_minus_anonymised_macro_token_recall"]["estimate"] == 0.35
@@ -91,7 +92,7 @@ def test_proje_bootstrap_esli_ve_deterministik(tmp_path, monkeypatch):
 
 
 def test_rapor_yalniz_toplu_dayanak_icerir(tmp_path, monkeypatch):
-    _, ozet_yolu = hazirla(tmp_path, monkeypatch)
+    _, ozet_yolu, audit_commit = hazirla(tmp_path, monkeypatch)
     ozet = json.loads(ozet_yolu.read_text(encoding="utf-8"))
 
     rapor = bootstrap.rapor_olustur(ozet_yolu, ozet, audit_commit=audit_commit, tekrar=100, tohum=7)
@@ -108,7 +109,7 @@ def test_rapor_yalniz_toplu_dayanak_icerir(tmp_path, monkeypatch):
 
 
 def test_yanlis_dogrulama_dayanagi_reddedilir(tmp_path, monkeypatch):
-    _, ozet_yolu = hazirla(tmp_path, monkeypatch)
+    _, ozet_yolu, audit_commit = hazirla(tmp_path, monkeypatch)
     ozet = json.loads(ozet_yolu.read_text(encoding="utf-8"))
     ozet["provenance"]["prompts_sha256"] = "0" * 64
 
@@ -117,21 +118,21 @@ def test_yanlis_dogrulama_dayanagi_reddedilir(tmp_path, monkeypatch):
 
 
 def test_eslesmeyen_proje_kumeleri_reddedilir(tmp_path, monkeypatch):
-    _, ozet_yolu = hazirla(tmp_path, monkeypatch)
+    _, ozet_yolu, audit_commit = hazirla(tmp_path, monkeypatch)
     ozet = json.loads(ozet_yolu.read_text(encoding="utf-8"))
     del ozet["projects"]["gold"]["proje-c"]
 
     with pytest.raises(ValueError, match="proje kümeleri farklı"):
-        bootstrap.rapor_olustur(ozet_yolu, ozet, tekrar=100)
+        bootstrap.rapor_olustur(ozet_yolu, ozet, audit_commit=audit_commit, tekrar=100)
 
 
 def test_proje_satir_sayisi_uyusmazligi_reddedilir(tmp_path, monkeypatch):
-    _, ozet_yolu = hazirla(tmp_path, monkeypatch)
+    _, ozet_yolu, audit_commit = hazirla(tmp_path, monkeypatch)
     ozet = json.loads(ozet_yolu.read_text(encoding="utf-8"))
     ozet["projects"]["v5_predicted"]["proje-b"]["rows"] = 49
 
     with pytest.raises(ValueError, match="satır sayıları farklı"):
-        bootstrap.rapor_olustur(ozet_yolu, ozet, tekrar=100)
+        bootstrap.rapor_olustur(ozet_yolu, ozet, audit_commit=audit_commit, tekrar=100)
 
 
 def test_audit_commit_depo_gecmisinde_olmali(tmp_path, monkeypatch):
@@ -151,7 +152,7 @@ def test_gecersiz_bootstrap_parametreleri_reddedilir():
 
 
 def test_toplu_cikti_depo_disinda_olmali(tmp_path, monkeypatch):
-    kok, _ = hazirla(tmp_path, monkeypatch)
+    kok, _, _ = hazirla(tmp_path, monkeypatch)
 
     assert bootstrap.depo_icinde(kok / "summary.json")
     assert not bootstrap.depo_icinde(tmp_path / "summary.json")
