@@ -1,6 +1,6 @@
 # Yol haritası
 
-Tarih: 11 Ekim 2026 · main `219b8bc` sonrası. Bu belge sıradaki işleri, her işin çıkış ölçütünü ve
+Tarih: 5 Kasım 2026 · main `fd64c1a` sonrası. Bu belge sıradaki işleri, her işin çıkış ölçütünü ve
 karar kurallarını sabitler. Olasılıklar ya repodaki verilerden hesaplandı (yöntemi yanında) ya da
 öznel önseldir (öyle işaretli). Yeni bir sonuç geldiğinde ilgili satır güncellenir; geçmiş satırlar silinmez.
 
@@ -13,7 +13,14 @@ karar kurallarını sabitler. Olasılıklar ya repodaki verilerden hesaplandı (
 | v6 − v5 | test2000 +0,011 [+0,002; +0,018]; eval115 −0,020 [−0,057; +0,020], proje-kümeli eşli bootstrap |
 | Veri bütünlüğü | Bölümler ayrık; snkv ⊃ sqlite istisnası açıklandı ([V6_VERI_DENETIMI.md](arastirma/V6_VERI_DENETIMI.md)) |
 | v6 | Eğitim, validation seçimi, iki nihai ölçüm ve açıklama denetimi tamamlandı; adaptör ve tam duyarlıklı kanıt yayımlandı |
+| Eğitilmemiş taban | Qwen3-8B adaptörsüz: `test_sabit` gerçek-ad/öneksiz F1 0,03592/0,03647 (n=2.000); `eval115` 0,03084/0,03291 (n=115); ölçüm commit `fd64c1a` |
 | Altyapı | CI yeşil; doğrudan push'ta yeni dosyalar da lint'leniyor; release künyesi ve atıf dosyaları hazır |
+
+## Eğitilmemiş taban ve istem örneği karıştırıcısı
+
+Ölçüm komutu: `python3 olcum_taban.py --veri ../asm-v6/lora/veri-v6 -o sonuc/olcum-taban.json`; yayımlanmış ölçüm commit'i `fd64c1a8201b396300b88602f87702b81d1e5dfc`. Bölümler: `test_sabit` n=2.000, `eval115` n=115. Kanonik/öneksiz F1 sırasıyla 0,03592/0,03647 ve 0,03084/0,03291. v6 − taban eşli farkları +0,09885 [0,07341; 0,12900] ve +0,10455 [0,02154; 0,17973] (proje-kümeli bootstrap, 2.000 çekim, tohum 42). Adaptörsüz model, sabit sistem istemindeki örnek adı aynen 768/2.000 satırda ve onu içeren bir adı 1.188/2.000 satırda üretti. Bu bir istem-karıştırıcısıdır; modelin en iyi promptsuz/alternatif istem taban çizgisi değildir. Test puanı 18 Ekim'de yayımlanmış koşudan alınmıştır; burada yeniden ölçülmedi.
+
+Düşük maliyetli sonraki deney, mevcut [PR #23](https://github.com/krxi/asmsense/pull/23) validation-only prompt-example ablation'ıdır. GPU çıkarımı **not run**; sonuç gelmeden kazanç iddiası yoktur. Ardından string'siz/optimize fonksiyonlar ve açıklama hedefleri, yalnız validation'da ve tek değişkenli protokolle ele alınmalı.
 
 ## Fazlar
 

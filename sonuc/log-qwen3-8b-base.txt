@@ -1,0 +1,26 @@
+2026-10-18 12:04:48,712 test_sabit: 2000 satır, sha256 doğrulandı
+2026-10-18 12:04:48,717 eval115: 115 satır, sha256 doğrulandı
+2026-10-18 12:04:48,718 Ortam: {"model": "Qwen/Qwen3-8B", "revizyon": "b968826d9c46dd6066d109eabc6255188de91218", "adaptor": null, "dtype": "bfloat16", "attn": "sdpa", "max_new_tokens": 160, "do_sample": false, "enable_thinking": false, "transformers": "5.3.0", "torch": "2.11.0+cu130", "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition"}
+2026-10-18 12:07:19,652 test_sabit 100/2000
+2026-10-18 12:09:12,979 test_sabit 200/2000
+2026-10-18 12:11:09,351 test_sabit 300/2000
+2026-10-18 12:13:01,936 test_sabit 400/2000
+2026-10-18 12:14:53,478 test_sabit 500/2000
+2026-10-18 12:16:46,753 test_sabit 600/2000
+2026-10-18 12:18:39,769 test_sabit 700/2000
+2026-10-18 12:20:36,231 test_sabit 800/2000
+2026-10-18 12:22:31,073 test_sabit 900/2000
+2026-10-18 12:24:28,573 test_sabit 1000/2000
+2026-10-18 12:26:23,372 test_sabit 1100/2000
+2026-10-18 12:28:19,538 test_sabit 1200/2000
+2026-10-18 12:30:08,218 test_sabit 1300/2000
+2026-10-18 12:32:03,082 test_sabit 1400/2000
+2026-10-18 12:34:01,720 test_sabit 1500/2000
+2026-10-18 12:35:55,469 test_sabit 1600/2000
+2026-10-18 12:37:49,906 test_sabit 1700/2000
+2026-10-18 12:39:38,825 test_sabit 1800/2000
+2026-10-18 12:41:34,789 test_sabit 1900/2000
+2026-10-18 12:43:31,321 test_sabit 2000/2000
+2026-10-18 12:43:31,340 TABAN test_sabit {'n': 2000, 'f1': 0.03591554834054834, 'f1_kati': 0.03591554834054834, 'gecerli_json_orani': 0.9995, 'sinira_dayanan_orani': 0.0005, 'sure_sn': 2284.7, 'sha256': 'a33d459af5a41c7949188ffa46d19a133350c1a72c5011abf835fe2a212b4e7f'}
+2026-10-18 12:45:24,786 eval115 100/115
+2026-10-18 12:45:41,204 TABAN eval115 {'n': 115, 'f1': 0.03083505866114562, 'f1_kati': 0.03083505866114562, 'gecerli_json_orani': 1.0, 'sinira_dayanan_orani': 0.0, 'sure_sn': 129.9, 'sha256': '85b38ee613cf50aafdd19694f221ea3b8afd8783c10a2aec2d205d2c1a756ccc'}

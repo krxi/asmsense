@@ -1,0 +1,35 @@
+{
+  "ortam": {
+    "model": "Qwen/Qwen3-8B",
+    "revizyon": "b968826d9c46dd6066d109eabc6255188de91218",
+    "adaptor": null,
+    "dtype": "bfloat16",
+    "attn": "sdpa",
+    "max_new_tokens": 160,
+    "do_sample": false,
+    "enable_thinking": false,
+    "transformers": "5.3.0",
+    "torch": "2.11.0+cu130",
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition"
+  },
+  "bolumler": {
+    "test_sabit": {
+      "n": 2000,
+      "f1": 0.03591554834054834,
+      "f1_kati": 0.03591554834054834,
+      "gecerli_json_orani": 0.9995,
+      "sinira_dayanan_orani": 0.0005,
+      "sure_sn": 2284.7,
+      "sha256": "a33d459af5a41c7949188ffa46d19a133350c1a72c5011abf835fe2a212b4e7f"
+    },
+    "eval115": {
+      "n": 115,
+      "f1": 0.03083505866114562,
+      "f1_kati": 0.03083505866114562,
+      "gecerli_json_orani": 1.0,
+      "sinira_dayanan_orani": 0.0,
+      "sure_sn": 129.9,
+      "sha256": "85b38ee613cf50aafdd19694f221ea3b8afd8783c10a2aec2d205d2c1a756ccc"
+    }
+  }
+}

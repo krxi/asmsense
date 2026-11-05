@@ -1,0 +1,175 @@
+{
+  "surum": "taban-olcum-1",
+  "protokol": "molab/TABAN_PROTOKOL.md",
+  "bootstrap_tekrar": 2000,
+  "bootstrap_tohum": 42,
+  "girdiler": {
+    "test_sabit": {
+      "veri": {
+        "dosya": "test_sabit.jsonl",
+        "sha256": "4ad04cd5b904a91a77d417b2a427ccb053bffe502368ecb182d293be84fcc586"
+      },
+      "taban": {
+        "dosya": "test2000-qwen3-8b-base.jsonl",
+        "sha256": "a33d459af5a41c7949188ffa46d19a133350c1a72c5011abf835fe2a212b4e7f"
+      },
+      "v6": {
+        "dosya": "test_sabit-sonuc.jsonl",
+        "sha256": "80cae09e152fa6cb42f1f5e6bec4ec35106a41049963bca1ba0ba71e29885be2"
+      },
+      "v1": {
+        "dosya": "test2000-molab-qwen3-8b.jsonl",
+        "sha256": "1aa123774e78bb9b4d4f4d546e6ca669b907ede0dc30f7dd26634ce17c883885"
+      }
+    },
+    "eval115": {
+      "veri": {
+        "dosya": "eval115.jsonl",
+        "sha256": "e9fa2f5747eda8a2b78fb614548182da869e87a0b32508e6d26f6c9527922b12"
+      },
+      "taban": {
+        "dosya": "eval115-qwen3-8b-base.jsonl",
+        "sha256": "85b38ee613cf50aafdd19694f221ea3b8afd8783c10a2aec2d205d2c1a756ccc"
+      },
+      "v6": {
+        "dosya": "eval115-sonuc.jsonl",
+        "sha256": "109b43a8c82ab79145cb27dd49434053f2b258c4d7112c919c1524aa5f9eeee6"
+      },
+      "v1": {
+        "dosya": "eval115-molab-qwen3-8b.jsonl",
+        "sha256": "25df8a35da961a2d20a4dedf8f6139e9b017beb0d1e0c8240f88ce30e91edfbc"
+      }
+    }
+  },
+  "bolumler": {
+    "test_sabit": {
+      "v6_eksi_taban": {
+        "n": 2000,
+        "model_f1": 0.13476998556998557,
+        "taban_f1": 0.03591554834054834,
+        "fark": 0.09885443722943724,
+        "model_oneksiz_f1": 0.13689736652236653,
+        "taban_oneksiz_f1": 0.03647031024531024,
+        "ga95": [
+          0.07340744387166874,
+          0.12900344912540035
+        ],
+        "bootstrap_birimi": "proje; aynı kaynak/opt satırları birlikte",
+        "proje_sayisi": 26
+      },
+      "v1_eksi_taban": {
+        "n": 2000,
+        "model_f1": 0.10606010101010101,
+        "taban_f1": 0.03591554834054834,
+        "fark": 0.07014455266955266,
+        "model_oneksiz_f1": 0.10800811688311689,
+        "taban_oneksiz_f1": 0.03647031024531024,
+        "ga95": [
+          0.04602839392662402,
+          0.09583018706306377
+        ],
+        "bootstrap_birimi": "proje; aynı kaynak/opt satırları birlikte",
+        "proje_sayisi": 26
+      },
+      "taban": {
+        "n": 2000,
+        "f1": 0.03591554834054834,
+        "f1_kati": 0.03591554834054834,
+        "oneksiz_f1": 0.03647031024531024,
+        "tam_isabet": 5,
+        "f1_tam_isabet": 6,
+        "oneksiz_f1_tam_isabet": 6,
+        "kayitli_f1_uyumsuz": 0,
+        "gecerli_json_orani": 0.9995,
+        "sinira_dayanan_orani": 0.0005,
+        "opt": {
+          "-O0": 0.03903605920066826,
+          "-O1": 0.04085106382978723,
+          "-O2": 0.026024187452758883,
+          "-O3": 0.01949241234955521,
+          "-Os": 0.03386984126984127
+        }
+      },
+      "istem_ornegi_kopyasi": {
+        "taban": {
+          "ad_ornek": 768,
+          "ad_ornek_iceren": 1188,
+          "aciklama_ornek": 658
+        },
+        "v6": {
+          "ad_ornek": 0,
+          "ad_ornek_iceren": 0,
+          "aciklama_ornek": 0
+        },
+        "v1": {
+          "ad_ornek": 0,
+          "ad_ornek_iceren": 0,
+          "aciklama_ornek": 0
+        }
+      }
+    },
+    "eval115": {
+      "v6_eksi_taban": {
+        "n": 115,
+        "model_f1": 0.13538302277432712,
+        "taban_f1": 0.03083505866114562,
+        "fark": 0.10454796411318151,
+        "model_oneksiz_f1": 0.15260869565217391,
+        "taban_oneksiz_f1": 0.032905452035886816,
+        "ga95": [
+          0.021541005291005288,
+          0.17973084886128363
+        ],
+        "bootstrap_birimi": "proje; aynı kaynak/opt satırları birlikte",
+        "proje_sayisi": 5
+      },
+      "v1_eksi_taban": {
+        "n": 115,
+        "model_f1": 0.09358178053830228,
+        "taban_f1": 0.03083505866114562,
+        "fark": 0.06274672187715666,
+        "model_oneksiz_f1": 0.11089026915113873,
+        "taban_oneksiz_f1": 0.032905452035886816,
+        "ga95": [
+          0.037453703703703704,
+          0.0884054834054834
+        ],
+        "bootstrap_birimi": "proje; aynı kaynak/opt satırları birlikte",
+        "proje_sayisi": 5
+      },
+      "taban": {
+        "n": 115,
+        "f1": 0.03083505866114562,
+        "f1_kati": 0.03083505866114562,
+        "oneksiz_f1": 0.032905452035886816,
+        "tam_isabet": 0,
+        "f1_tam_isabet": 0,
+        "oneksiz_f1_tam_isabet": 0,
+        "kayitli_f1_uyumsuz": 0,
+        "gecerli_json_orani": 1.0,
+        "sinira_dayanan_orani": 0.0,
+        "opt": {
+          "-O0": 0.045410052910052914,
+          "-O2": 0.014935064935064937
+        }
+      },
+      "istem_ornegi_kopyasi": {
+        "taban": {
+          "ad_ornek": 50,
+          "ad_ornek_iceren": 72,
+          "aciklama_ornek": 39
+        },
+        "v6": {
+          "ad_ornek": 0,
+          "ad_ornek_iceren": 0,
+          "aciklama_ornek": 0
+        },
+        "v1": {
+          "ad_ornek": 0,
+          "ad_ornek_iceren": 0,
+          "aciklama_ornek": 0
+        }
+      }
+    }
+  }
+}

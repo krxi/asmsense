@@ -165,10 +165,14 @@ Aynı sabit v4 test örneklemi (`lora/test_sabit_idler.txt`, az bilinen test pro
 | Qwen3-8B + LoRA v5 | `eval_115` | 115 | 0.188 / 0.120 / 0.155 | 0.173 | 1 / 2 |
 | Qwen3-8B + LoRA v1 (yalnız ad, 41 bin satır × 2 epoch) | v4 test, sabit örneklem | 2.000 | 0.108 / 0.093 / 0.106 | 0.108 | 25 / 33 |
 | Qwen3-8B + LoRA v1 | `eval_115` | 115 | 0.102 / 0.085 / 0.094 | 0.111 | 1 / 4 |
+| Qwen3-8B, eğitilmemiş (v6 ile aynı girdi ve çözümleme, adaptörsüz) | v4 test, sabit örneklem | 2.000 | 0.039 / 0.026 / 0.036 | 0.037 | 6 / 6 |
+| Qwen3-8B, eğitilmemiş | `eval_115` | 115 | 0.045 / 0.015 / 0.031 | 0.033 | 0 / 0 |
 | Qwen2.5-Coder-1.5B + LoRA v3, çağrı bağlamlı (MLX, laptop) | sabit örneklemin ilk 500'ü | 500 | 0.044 | 0.045 | 0 |
 | Qwen2.5-Coder-1.5B + LoRA v3, yalnız assembly | sabit örneklemin ilk 500'ü | 500 | 0.037 | 0.038 | 0 |
 
 Tablodaki tarihsel “tam isabet” sayıları ad-token F1=1 anlamındadır; token sırası veya büyük/küçük harfi farklı adları da kapsayabilir. v6'nın birebir string eşleşme sayısı sabit testte 21, `eval_115`'te 1'dir ve F1=1 sayısından ayrıdır.
+
+**Eğitilmemiş taban.** Temel checkpoint `Qwen/Qwen3-8B` (revizyon `b968826d9c46dd6066d109eabc6255188de91218`) adaptörsüz; v6 final koşusuyla aynı girdi, sistem istemi, chat template, greedy çözümleme (`enable_thinking=False`, `max_new_tokens=160`), bf16 ve GPU ile ölçüldü. Yeniden üretim komutu: `python3 olcum_taban.py --veri ../asm-v6/lora/veri-v6 -o sonuc/olcum-taban.json`; ölçümün yayımlandığı commit: `fd64c1a8201b396300b88602f87702b81d1e5dfc`. `test_sabit` (n=2.000) gerçek-ad F1 0,03592, öneksiz F1 0,03647; `eval115` (n=115) sırasıyla 0,03084 ve 0,03291. Eşli v6 − taban farkı `test_sabit` için +0,09885 [%0,07341; %0,12900], `eval115` için +0,10455 [%0,02154; %0,17973]; proje-kümeli bootstrap, 2.000 çekim, tohum 42. Adaptörsüz model sabit istem örneğindeki adı aynen 768/2.000 satırda, onu içeren bir adı 1.188/2.000 satırda üretti; bu, tabanın istem örneğiyle karıştığını gösterir. Kopya üretmeyen 812 satırlık altküme model davranışıyla seçildiğinden yalnız betimseldir. Bu belge güncellemesi test/eval115 puanlamasını yeniden çalıştırmaz.
 
 **Gömülü proje dışında (tarihsel v5 karşılaştırması; v6 sonucu değil).** `snkv` olmadan (2.000 satırın 1.491'i) ad F1 v5'te 0.132, çağrı bağlamlı mimo-v2.6-pro'da 0.190; eşli v5 − mimo farkı −0.044 [−0.076, −0.021] yerine −0.058 [−0.082, −0.033] (proje kümeli bootstrap, 2.000 çekim). Yukarıdaki başlık rakamları önceki koşularla karşılaştırılabilir kalsın diye 2.000 satırın hepsini kullanır.
 
