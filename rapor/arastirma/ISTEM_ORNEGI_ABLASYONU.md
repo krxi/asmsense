@@ -17,6 +17,8 @@ Tarihsel ölçümün kaydı:
 - Sabit test: `test_sabit`, n=2.000; kanonik `taban.f1` = 0,0359155483; öneksiz F1 = 0,0364703102; örnek adı tam kopya 768/2.000, içeren tahmin 1.188/2.000.
 - Küçük kontrol: `eval115`, n=115; kanonik F1 = 0,0308350587; öneksiz F1 = 0,0329054520; tam kopya 50/115, içeren tahmin 72/115.
 
+Skorlayıcı kaynakları: [taban.py::f1](../../taban.py), [olcum_v6.py::oneksiz](../../olcum_v6.py) ve [aciklama_degerlendir.py::bootstrap_farki](../../aciklama_degerlendir.py).
+
 Bu sayılar yalnız tarihsel test ölçümünü tanımlar. Bu PR test dosyalarını okumaz,
 puanlamaz veya prompt seçimi için kullanmaz. Yeni karşılaştırma yalnız sabit
 v6 `valid_300` üzerinde yapılır.
@@ -38,7 +40,7 @@ yalnız ilk iki mesaj modele verilir; validation hedef mesajı prompt'a eklenmez
 Girdi, v6 release'indeki 300 satırlık `valid_300.jsonl` olmalıdır. Betik
 `lora/v6_girdi_manifest.json` içindeki `valid` SHA-256 değerini doğrular,
 satırları `lora/v6_dogrulama.py::sema_dogrula` ile denetler ve tam 300 benzersiz
-kimlik ister. Dosya adıyla split seçilmez. Başka dosya, test/eval115 dahil,
+kimlik ister. Dosya adıyla split seçilmez. Beklenen `valid` dosya SHA-256 değeri `45ed0960b03453f6a2eb45a118cc68bff3ff50ae22afec1849d023633dea90ad`'dır. Başka dosya, test/eval115 dahil,
 hash uyuşmadığı için reddedilir.
 
 ### Çalıştırma
@@ -48,6 +50,8 @@ içinden yerel olarak açın. Arşiv SHA-256:
 `e1286104e59860a34fc18fe908ccadc3896b4db40fe1a5a75253aa9cc7a8c201`.
 Modeli [resmî Qwen3-8B deposundan](https://huggingface.co/Qwen/Qwen3-8B/tree/b968826d9c46dd6066d109eabc6255188de91218)
 aynı revision ile önceden indirin; model kartındaki lisans Apache-2.0'dır.
+Kod [MIT](../../LICENSE) lisanslıdır. Veri release'ini yeniden dağıtmayın; kaynak proje lisansları ve
+`lisans` metaverisi için [veri/LISANSLAR.md](../../veri/LISANSLAR.md) geçerlidir.
 Betik ağ erişimini kapalı tutar ve yalnız yerel snapshot kabul eder.
 
 Planı GPU olmadan doğrulayın:
