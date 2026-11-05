@@ -126,9 +126,40 @@ def test_paket_kor_ayni_fonksiyonlar_ve_hash_bagi(girdiler, tmp_path):
     for r in key["esleme"]:
         say.setdefault(r["id"], set()).add(r["sistem"])
     assert len(say) == 4 and all(s == {"a", "b"} for s in say.values())
+    assert all("__asmsense_target" in r["c_kaynagi"] for r in rs)
+    assert all("synthetic_f" not in r["c_kaynagi"] for r in rs)
     sablon = ad.jsonl_oku(paket.with_name(paket.name + ".etiket-sablonu.jsonl"))
     assert all(r["paket_sha256"] == key["paket_sha256"] for r in sablon)
     assert anahtar.stat().st_mode & 0o777 == 0o600
+
+
+def test_hedef_adi_kod_ve_yorumlarda_maskelenir_literal_korunur():
+    kaynak = (
+        "/* synthetic_fn is documented */\\n"
+        "int synthetic_fn(int x) { // synthetic_fn self-call\\n"
+        '  const char *s = "synthetic_fn";\\n'
+        "  return x ? synthetic_fn(x - 1) : s[0];\\n"
+        "}\\n"
+    )
+    beklenen = (
+        "/* __asmsense_target is documented */\\n"
+        "int __asmsense_target(int x) { // __asmsense_target self-call\\n"
+        '  const char *s = "synthetic_fn";\\n'
+        "  return x ? __asmsense_target(x - 1) : s[0];\\n"
+        "}\\n"
+    )
+    assert ad.hedef_adini_maskeyle(kaynak, "synthetic_fn") == beklenen
+
+
+def test_hedef_adi_maskesi_cakisma_ve_kapsam_hatalarini_kapatir():
+    kaynak = "int synthetic_fn(void) { return __asmsense_target; }"
+    sonuc = ad.hedef_adini_maskeyle(kaynak, "synthetic_fn")
+    assert "int __asmsense_target_1(void)" in sonuc
+    assert "return __asmsense_target;" in sonuc
+    with pytest.raises(ValueError, match="C tanımlayıcısı"):
+        ad.hedef_adini_maskeyle("int other(void) { return 0; }", "bad-name")
+    with pytest.raises(ValueError, match="kaynak kodunda"):
+        ad.hedef_adini_maskeyle("/* synthetic_fn */ int other(void) { return 0; }", "synthetic_fn")
 
 
 def test_varsayilan_anahtar_repo_disinda_ve_gitignore_kurali(girdiler, tmp_path):
