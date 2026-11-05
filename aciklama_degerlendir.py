@@ -167,6 +167,7 @@ def hedef_adini_maskeyle(kaynak, ad):
         raise ValueError("Hedef C tanımlayıcısı kaynak paketinde maskelenemedi")
     return maskeli
 
+
 def repo_disinda_yeni(yol):
     yol = Path(yol).resolve()
     if yol == KOK.resolve() or KOK.resolve() in yol.parents:
