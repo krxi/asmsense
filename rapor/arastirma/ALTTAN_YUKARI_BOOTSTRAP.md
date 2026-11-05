@@ -1,4 +1,4 @@
-# Bottom-up lexical audit: paired project-cluster intervals
+# Alttan yukarı sözcüksel denetim: eşli proje-kümeli aralıklar
 
 ## Amaç
 
@@ -54,12 +54,12 @@ Ardından yalnız aggregate özeti kullanın:
 
 ```sh
 python3 alttan_yukari_bootstrap.py \
-  --summary /tmp/bottom-up-summary.json \
-  --output /tmp/bottom-up-bootstrap.json
+  --ozet /tmp/bottom-up-summary.json \
+  --cikti /tmp/bottom-up-bootstrap.json
 ```
 
-Varsayılanlar: 2.000 bootstrap tekrarı, seed 42. Farklı bir yöntem önceden
-belirlenirse `--replicates` ve `--seed` açıkça verilebilir. Çıktı depo dışında
+Varsayılanlar: 2.000 bootstrap tekrarı, seed 42. Komut bu değerleri açıkça sabitlemek isterse `--tekrar 2000 --tohum 42` ekleyin. Farklı bir yöntem önceden
+belirlenirse `--tekrar` ve `--tohum` açıkça verilebilir. Çıktı depo dışında
 olmalı ve mevcut dosyanın üzerine yazılmaz.
 
 ## Güvenlik ve kapsam
