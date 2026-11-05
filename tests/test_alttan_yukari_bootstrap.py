@@ -97,9 +97,12 @@ def test_proje_bootstrap_esli_ve_deterministik(tmp_path, monkeypatch):
 
     assert ilk == ikinci
     assert ilk["audit_commit"] == audit_commit
-    assert ilk["audit_tree"] == subprocess.check_output(
-        ["git", "rev-parse", "--verify", audit_commit + "^{tree}"], cwd=kok, text=True
-    ).strip()
+    assert (
+        ilk["audit_tree"]
+        == subprocess.check_output(
+            ["git", "rev-parse", "--verify", audit_commit + "^{tree}"], cwd=kok, text=True
+        ).strip()
+    )
     assert ilk["audit_simulator_sha256"] == bootstrap.sha256(kok / "alttan_yukari_sim.py")
     assert ilk["audit_provenance"] == "clean_tracked_head_operator_attestation"
     assert ilk["n_projects"] == 3
