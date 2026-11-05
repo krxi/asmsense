@@ -347,3 +347,29 @@ def test_kaynak_kapsami_cli_sadece_aggregate_json_yazar(girdiler, capsys):
     assert "synthetic_f" not in yayin
     assert "return" not in yayin
     assert str(veri.parent) not in yayin
+
+
+
+def test_kaynak_kapsami_opt_kopyalarini_tek_kaynak_sayar(girdiler, monkeypatch, tmp_path):
+    veri, _, kaynak = girdiler
+    satirlar = ad.jsonl_oku(veri)
+    sabit, yasak = dg.dayanaklar()
+    satirlar[1]["proje"] = satirlar[0]["proje"]
+    satirlar[1]["dosya"] = satirlar[0]["dosya"]
+    satirlar[1]["ad"] = satirlar[0]["ad"]
+    sabit = dict(sabit)
+    sabit[satirlar[1]["id"]] = {
+        "gercek": satirlar[1]["ad"],
+        "proje": satirlar[1]["proje"],
+        "opt": satirlar[1]["opt"],
+    }
+    monkeypatch.setattr(dg, "dayanaklar", lambda: (sabit, yasak))
+    ayni_kaynak = _jsonl(tmp_path / "ayni-kaynak-farkli-opt.jsonl", satirlar)
+
+    sonuc = ad.kaynak_kapsami_ozeti(ayni_kaynak, kaynak)
+
+    assert sonuc["kimlik_n"] == 6
+    assert sonuc["kimlik_kaynak_bulunan"] == 6
+    assert sonuc["benzersiz_kaynak_n"] == 5
+    assert sonuc["kaynak_bulunan"] == 5
+    assert sonuc["kaynak_eksik"] == 0
