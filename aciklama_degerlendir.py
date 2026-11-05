@@ -147,6 +147,81 @@ def kaynak_anahtari(kayit):
     return f"{kayit['proje']}/{kayit['dosya']}:{kayit['ad']}"
 
 
+def hedef_adini_maskeyle(kaynak, ad):
+    """Hedef sembolünü kod ve yorumlarda nötrleştir; string/char sabitlerini koru."""
+    if not isinstance(ad, str) or not re.fullmatch(r"[A-Za-z_]\\w*", ad):
+        raise ValueError("Hedef adı geçerli bir C tanımlayıcısı olmalı")
+
+    yer_tutucu, sira = "__asmsense_target", 0
+    while re.search(rf"\\b{re.escape(yer_tutucu)}\\b", kaynak):
+        sira += 1
+        yer_tutucu = f"__asmsense_target_{sira}"
+
+    parcalar = []
+    durum, tirnak, kod_eslesmesi, i = "kod", "", 0, 0
+    while i < len(kaynak):
+        c = kaynak[i]
+        if durum == "kod":
+            if kaynak.startswith("//", i):
+                parcalar.append("//")
+                durum, i = "satir_yorumu", i + 2
+                continue
+            if kaynak.startswith("/*", i):
+                parcalar.append("/*")
+                durum, i = "blok_yorum", i + 2
+                continue
+            if c in "\\\"'":
+                tirnak = c
+                parcalar.append(c)
+                durum, i = ("dize" if c == "\\\"" else "karakter"), i + 1
+                continue
+        elif durum == "satir_yorumu":
+            if c == "\\\\" and i + 1 < len(kaynak) and kaynak[i + 1] == "\\n":
+                parcalar.append("\\\\n")
+                i += 2
+                continue
+            if c == "\\n":
+                parcalar.append(c)
+                durum, i = "kod", i + 1
+                continue
+        elif durum == "blok_yorum":
+            if kaynak.startswith("*/", i):
+                parcalar.append("*/")
+                durum, i = "kod", i + 2
+                continue
+        elif durum in ("dize", "karakter"):
+            parcalar.append(c)
+            if c == "\\\\" and i + 1 < len(kaynak):
+                parcalar.append(kaynak[i + 1])
+                i += 2
+                continue
+            if c == tirnak:
+                durum = "kod"
+            i += 1
+            continue
+
+        if durum in ("kod", "satir_yorumu", "blok_yorum") and (c == "_" or c.isalpha()):
+            son = i + 1
+            while son < len(kaynak) and (kaynak[son] == "_" or kaynak[son].isalnum()):
+                son += 1
+            token = kaynak[i:son]
+            if token == ad:
+                parcalar.append(yer_tutucu)
+                if durum == "kod":
+                    kod_eslesmesi += 1
+            else:
+                parcalar.append(token)
+            i = son
+            continue
+
+        parcalar.append(c)
+        i += 1
+
+    if kod_eslesmesi == 0:
+        raise ValueError("Hedef C tanımlayıcısı kaynak kodunda bulunamadı")
+    return "".join(parcalar)
+
+
 def repo_disinda_yeni(yol):
     yol = Path(yol).resolve()
     if yol == KOK.resolve() or KOK.resolve() in yol.parents:
@@ -177,7 +252,10 @@ def paketle(manifest, secilen, girdiler, kaynak_yolu, paket_yolu, anahtar_yolu=N
         paket.append(
             {
                 "ornek": ornek,
-                "c_kaynagi": kaynaklar[kaynak_anahtari(veri[kimlik])],
+                "c_kaynagi": hedef_adini_maskeyle(
+                    kaynaklar[kaynak_anahtari(veri[kimlik])],
+                    veri[kimlik]["ad"],
+                ),
                 "aciklama_en": sistemler[sistem][kimlik]["aciklama_en"],
             }
         )
