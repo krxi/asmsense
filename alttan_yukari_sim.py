@@ -107,8 +107,8 @@ def _id_map(rows, label):
     return result
 
 
-def validate_validation_inputs(prompts_path, raw_path, predictions_path, prompts, raw_rows, predictions):
-    """Require the exact, hash-pinned validation inputs before any lexical audit."""
+def validate_validation_files(prompts_path, raw_path, predictions_path):
+    """Verify split-specific input hashes before parsing any dataset rows."""
     if not raw_path.is_file():
         raise ValueError("raw input must be one complete validation JSONL file")
 
@@ -139,6 +139,9 @@ def validate_validation_inputs(prompts_path, raw_path, predictions_path, prompts
         if actual != digest:
             raise ValueError(label + " do not match the frozen validation hash")
 
+
+def validate_validation_rows(prompts, raw_rows, predictions):
+    """Check IDs and target metadata after the input files pass their hash pins."""
     prompt_map = _id_map(prompts, "prompts")
     prediction_map = _id_map(predictions, "predictions")
     raw_map = _id_map(raw_rows, "raw validation data")
@@ -156,6 +159,11 @@ def validate_validation_inputs(prompts_path, raw_path, predictions_path, prompts
         source = raw_map[row_id]
         if identity(prediction) != identity(source) or prediction.get("gercek") != source.get("ad"):
             raise ValueError("prediction identity or gold label does not match validation raw data")
+
+
+def validate_validation_inputs(prompts_path, raw_path, predictions_path, prompts, raw_rows, predictions):
+    validate_validation_files(prompts_path, raw_path, predictions_path)
+    validate_validation_rows(prompts, raw_rows, predictions)
 
 
 def is_inside_repo(path):
@@ -285,10 +293,11 @@ def main():
     if args.export and is_inside_repo(args.export):
         parser.error("--export contains row-level prompts and must be outside the repository")
     try:
+        validate_validation_files(args.prompts, args.raw, args.predictions)
         rows = list(read_rows(args.prompts))
         raw_rows = list(read_rows(args.raw))
         predictions = list(read_rows(args.predictions))
-        validate_validation_inputs(args.prompts, args.raw, args.predictions, rows, raw_rows, predictions)
+        validate_validation_rows(rows, raw_rows, predictions)
     except (OSError, ValueError) as exc:
         parser.error(str(exc))
     projects = {row["proje"] for row in rows}
