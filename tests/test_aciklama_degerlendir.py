@@ -135,18 +135,18 @@ def test_paket_kor_ayni_fonksiyonlar_ve_hash_bagi(girdiler, tmp_path):
 
 def test_hedef_adi_kod_ve_yorumlarda_maskelenir_literal_korunur():
     kaynak = (
-        "/* synthetic_fn is documented */\\n"
-        "int synthetic_fn(int x) { // synthetic_fn self-call\\n"
-        '  const char *s = "synthetic_fn";\\n'
-        "  return x ? synthetic_fn(x - 1) : s[0];\\n"
-        "}\\n"
+        "/* synthetic_fn is documented */\n"
+        "int synthetic_fn(int x) { // synthetic_fn self-call\n"
+        '  const char *s = "synthetic_fn";\n'
+        "  return x ? synthetic_fn(x - 1) : s[0];\n"
+        "}\n"
     )
     beklenen = (
-        "/* __asmsense_target is documented */\\n"
-        "int __asmsense_target(int x) { // __asmsense_target self-call\\n"
-        '  const char *s = "synthetic_fn";\\n'
-        "  return x ? __asmsense_target(x - 1) : s[0];\\n"
-        "}\\n"
+        "/* __asmsense_target is documented */\n"
+        "int __asmsense_target(int x) { // __asmsense_target self-call\n"
+        '  const char *s = "synthetic_fn";\n'
+        "  return x ? __asmsense_target(x - 1) : s[0];\n"
+        "}\n"
     )
     assert ad.hedef_adini_maskeyle(kaynak, "synthetic_fn") == beklenen
 
@@ -160,7 +160,6 @@ def test_hedef_adi_maskesi_cakisma_ve_kapsam_hatalarini_kapatir():
         ad.hedef_adini_maskeyle("int other(void) { return 0; }", "bad-name")
     with pytest.raises(ValueError, match="kaynak kodunda"):
         ad.hedef_adini_maskeyle("/* synthetic_fn */ int other(void) { return 0; }", "synthetic_fn")
-
 
 def test_varsayilan_anahtar_repo_disinda_ve_gitignore_kurali(girdiler, tmp_path):
     veri, tahminler, kaynak = girdiler
