@@ -1,4 +1,5 @@
 import json
+import subprocess
 
 import pytest
 
@@ -58,15 +59,22 @@ def hazirla(tmp_path, monkeypatch):
         },
     )
     monkeypatch.setattr(bootstrap, "KOK", kok)
+    (kok / "alttan_yukari_sim.py").write_text("# sentetik denetim araci\\n", encoding="utf-8")
+    subprocess.run(["git", "init"], cwd=kok, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "tests@example.invalid"], cwd=kok, check=True)
+    subprocess.run(["git", "config", "user.name", "Asmsense Tests"], cwd=kok, check=True)
+    subprocess.run(["git", "add", "."], cwd=kok, check=True)
+    subprocess.run(["git", "commit", "-m", "sentetik audit"], cwd=kok, check=True, capture_output=True)
+    audit_commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=kok, text=True).strip()
     ozet_yolu = yaz_json(tmp_path / "bottom-up-summary.json", sentetik_ozet())
-    return kok, ozet_yolu
+    return kok, ozet_yolu, audit_commit
 
 
 def test_proje_bootstrap_esli_ve_deterministik(tmp_path, monkeypatch):
-    _, ozet_yolu = hazirla(tmp_path, monkeypatch)
+    _, ozet_yolu, audit_commit = hazirla(tmp_path, monkeypatch)
     ozet = json.loads(ozet_yolu.read_text(encoding="utf-8"))
 
-    ilk = bootstrap.rapor_olustur(ozet_yolu, ozet, tekrar=500, tohum=42)
+    ilk = bootstrap.rapor_olustur(ozet_yolu, ozet, audit_commit=audit_commit, tekrar=500, tohum=42)
     ikinci = bootstrap.rapor_olustur(ozet_yolu, ozet, tekrar=500, tohum=42)
 
     assert ilk == ikinci
@@ -86,7 +94,7 @@ def test_rapor_yalniz_toplu_dayanak_icerir(tmp_path, monkeypatch):
     _, ozet_yolu = hazirla(tmp_path, monkeypatch)
     ozet = json.loads(ozet_yolu.read_text(encoding="utf-8"))
 
-    rapor = bootstrap.rapor_olustur(ozet_yolu, ozet, tekrar=100, tohum=7)
+    rapor = bootstrap.rapor_olustur(ozet_yolu, ozet, audit_commit=audit_commit, tekrar=100, tohum=7)
     kodlanmis = json.dumps(rapor, ensure_ascii=False)
 
     assert "proje-a" not in kodlanmis
@@ -105,7 +113,7 @@ def test_yanlis_dogrulama_dayanagi_reddedilir(tmp_path, monkeypatch):
     ozet["provenance"]["prompts_sha256"] = "0" * 64
 
     with pytest.raises(ValueError, match="sabit v6 validation"):
-        bootstrap.rapor_olustur(ozet_yolu, ozet, tekrar=100)
+        bootstrap.rapor_olustur(ozet_yolu, ozet, audit_commit=audit_commit, tekrar=100)
 
 
 def test_eslesmeyen_proje_kumeleri_reddedilir(tmp_path, monkeypatch):
@@ -124,6 +132,14 @@ def test_proje_satir_sayisi_uyusmazligi_reddedilir(tmp_path, monkeypatch):
 
     with pytest.raises(ValueError, match="satır sayıları farklı"):
         bootstrap.rapor_olustur(ozet_yolu, ozet, tekrar=100)
+
+
+def test_audit_commit_depo_gecmisinde_olmali(tmp_path, monkeypatch):
+    _, ozet_yolu, _ = hazirla(tmp_path, monkeypatch)
+    ozet = json.loads(ozet_yolu.read_text(encoding="utf-8"))
+
+    with pytest.raises(ValueError, match="audit commit depoda"):
+        bootstrap.rapor_olustur(ozet_yolu, ozet, audit_commit="0" * 40, tekrar=100)
 
 
 def test_gecersiz_bootstrap_parametreleri_reddedilir():
