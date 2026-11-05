@@ -42,7 +42,7 @@ jobs:
             onceki=$ONCEKI
           fi
           {
-            printf '%s\n' conftest.py iki_f1.py onek_denetim.py
+            printf '%s\n' conftest.py iki_f1.py onek_denetim.py indir_dogrulama.py
             git ls-files 'tests/*.py'
             if [ -n "$taban" ]; then git diff --name-only --diff-filter=A "$taban" HEAD -- '*.py'; fi
             if [ -n "$onceki" ]; then git diff --name-only --diff-filter=A "$onceki" HEAD -- '*.py'; fi
@@ -97,3 +97,4 @@ jobs:
       - run: python -m pip install pytest
       - run: clang --version && which objdump strip
       - run: python -m pytest -q -rs test_cikar_bin.py
+      - run: python -m pytest -q -rs tests/test_indir_dogrulama.py
