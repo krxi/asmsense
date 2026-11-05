@@ -18,12 +18,12 @@ KOK = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(KOK))
 sys.path.insert(0, str(KOK / "lora"))
 
-from aciklama_degerlendir import bootstrap_farki
-from cikti import ad_ayikla
-from hazirla import SISTEM_V6
-from olcum_v6 import oneksiz
-from taban import f1
-from v6_dogrulama import sema_dogrula
+from aciklama_degerlendir import bootstrap_farki  # noqa: E402
+from cikti import ad_ayikla  # noqa: E402
+from hazirla import SISTEM_V6  # noqa: E402
+from olcum_v6 import oneksiz  # noqa: E402
+from taban import f1  # noqa: E402
+from v6_dogrulama import sema_dogrula  # noqa: E402
 
 MODEL = "Qwen/Qwen3-8B"
 MODEL_REVIZYON = "b968826d9c46dd6066d109eabc6255188de91218"
@@ -343,7 +343,6 @@ def _gpu_olc(satirlar: list[dict], model_dizini: Path, veri_sha: str, manifest_s
         "gpu": torch.cuda.get_device_name(0),
         "gpu_vram_gib": round(vram_toplam / 1024**3, 1),
         "adaptör": None,
-        "komut_sablonu": "python3 molab/istem_ornegi_ablasyonu.py --validation <valid_300.jsonl> --model-dir <pinned-snapshot> --output <outside-repo>/aggregate.json --run",
         "uretim": {
             "do_sample": False,
             "enable_thinking": False,
