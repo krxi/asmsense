@@ -59,10 +59,11 @@ python3 alttan_yukari_sim.py \
   --output /tmp/bottom-up-summary.json
 ```
 
-Simülasyon komutunu çalıştırdığınız commit'i kaydedin:
+Simülasyondan **önce**, kullanılan checkout'u sabitleyin:
 
 ```sh
 AUDIT_COMMIT=$(git rev-parse HEAD)
+test -z "$(git status --porcelain --untracked-files=no)"
 ```
 
 Ardından yalnız aggregate özeti kullanın:
@@ -75,7 +76,7 @@ python3 alttan_yukari_bootstrap.py \
   --tekrar 2000 --tohum 42
 ```
 
-`--audit-commit`, simülasyonu üreten commit'tir; araç commit'in geçerli olduğunu ve bu commit'te `alttan_yukari_sim.py` bulunduğunu doğrular. Rapor bu commit'i kaydeder. Varsayılanlar 2.000 tekrar ve seed 42'dir; komut bunları açıkça sabitler. Farklı bir yöntem önceden belirlenirse `--tekrar` ve `--tohum` değiştirilebilir. Çıktı depo dışında olmalı ve mevcut dosyanın üzerine yazılmaz.
+`--audit-commit` mevcut `HEAD` ile aynı olmalı; araç ayrıca tüm **takipli** çalışma ağacının temiz olmasını, commit'in `alttan_yukari_sim.py` içermesini ve kodun SHA-256'sını doğrular. Rapor commit, tree ve simülatör dosyası hash'ini kaydeder. Simülasyon özeti mevcut şeması korunur. Özetin kendisi çalışma anındaki commit'i taşımadığından bu ilişki temiz checkout üzerinde **operatör beyanıdır**, kriptografik bir çalışma-zamanı imzası değildir: komutu aynı checkout'ta çalıştırın ve commit'i simülasyondan önce kaydedin. İzlenmeyen dosyalar bu temiz-ağaç kontrolüne dahil değildir. Varsayılanlar 2.000 tekrar ve seed 42'dir; komut bunları açıkça sabitler. Farklı bir yöntem önceden belirlenirse `--tekrar` ve `--tohum` değiştirilebilir. Çıktı depo dışında olmalı ve mevcut dosyanın üzerine yazılmaz.
 
 ## Güvenlik ve kapsam
 
